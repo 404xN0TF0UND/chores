@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>Assign Chore: {{ chore.name }}</h1>
+    <form method="post">
+        <div class="mb-3">
+            <label for="user" class="form-label">Assign To</label>
+            <select class="form-select" id="user" name="user">
+                <option value="">Unassigned</option>
+                {% for user in users %}
+                    <option value="{{ user }}" {% if user == chore.assigned_user %}selected{% endif %}>{{ user }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Assign</button>
+        <a href="{{ url_for('list_chores') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+{% endblock %}

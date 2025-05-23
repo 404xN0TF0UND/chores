@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>Unassigned Chores</h1>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Due Date</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for chore in chores %}
+                <tr>
+                    <td>{{ chore.id }}</td>
+                    <td>{{ chore.name }}</td>
+                    <td>{{ chore.due_date }}</td>
+                    <td>
+                        <a href="{{ url_for('assign_chore', chore_id=chore.id) }}" class="btn btn-sm btn-secondary">Assign</a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

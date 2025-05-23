@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>Chores List</h1>
+    <form method="get" class="mb-3">
+        <div class="row">
+            <div class="col-md-4">
+                <select name="user" class="form-select">
+                    <option value="">All Users</option>
+                    {% for user in users %}
+                        <option value="{{ user }}" {% if user == selected_user %}selected{% endif %}>{{ user }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <div class="form-check">
+                    <input type="checkbox" name="show_all" value="true" class="form-check-input" {% if request.args.get('show_all') == 'true' %}checked{% endif %}>
+                    <label class="form-check-label">Show Completed</label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary">Filter</button>
+            </div>
+        </div>
+    </form>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Due Date</th>
+                <th>Assigned To</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for chore in chores %}
+                <tr>
+                    <td>{{ chore.id }}</td>
+                    <td>{{ chore.name }}</td>
+                    <td>{{ chore.due_date }}</td>
+                    <td>{{ chore.assigned_user or 'Unassigned' }}</td>
+                    <td>{{ 'Completed' if chore.completed else 'Pending' }}</td>
+                    <td>
+                        {% if not chore.completed %}
+                            <a href="{{ url_for('assign_chore', chore_id=chore.id) }}" class="btn btn-sm btn-secondary">Assign</a>
+                            <a href="{{ url_for('complete_chore', chore_id=chore.id) }}" class="btn btn-sm btn-success">Complete</a>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
