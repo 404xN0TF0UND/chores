@@ -16,7 +16,7 @@ DATA_FILE = "chores.json"
 
 # Initialize users with phone numbers (for SMS)
 USERS = {
-    "Ronnie": "+7173770285",
+    "Ronnie": "+17173770285",
     "Becky": "+12405204440",
     "Dan": "+12234260451",
     "Cait": "+17173870963",
