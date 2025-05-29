@@ -10,6 +10,7 @@ from twilio.base.exceptions import TwilioRestException
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
+print(f"Loaded TWILLIO_PHONE_NUMBER: {TWILIO_PHONE_NUMBER}")
 
 # File to store chore and user data
 DATA_FILE = "chores.json"
