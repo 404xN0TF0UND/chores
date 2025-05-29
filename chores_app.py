@@ -7,9 +7,9 @@ from twilio.twiml.messaging_response import MessagingResponse
 from twilio.base.exceptions import TwilioRestException
 
 # Twilio configuration (replace with your credentials)
-TWILIO_ACCOUNT_SID = os.getenv("TWILLIO_ACCOUNT_SID")
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
-TWILIO_PHONE_NUMBER = os.getenv("TWILLIO_PHONE_NUMBER")
+TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
 
 # File to store chore and user data
 DATA_FILE = "chores.json"
