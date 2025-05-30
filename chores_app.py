@@ -5,6 +5,8 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.base.exceptions import TwilioRestException
+from dotenv import load_dotenv
+load_dotenv()
 
 # Twilio configuration (replace with your credentials)
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
