@@ -9,6 +9,7 @@ charset-normalizer==3.4.2
 click==8.2.1
 Flask==3.1.1
 frozenlist==1.6.0
+git-filter-repo==2.47.0
 gunicorn==23.0.0
 idna==3.10
 itsdangerous==2.2.0
@@ -19,6 +20,7 @@ ngrok==1.4.0
 packaging==25.0
 propcache==0.3.1
 PyJWT==2.10.1
+python-dotenv==1.1.0
 requests==2.32.3
 twilio==9.6.1
 urllib3==2.4.0
