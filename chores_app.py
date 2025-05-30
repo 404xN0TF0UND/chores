@@ -226,15 +226,17 @@ def sms_reply():
         response.message(message)
         return str(response)
 
-    # Regex to capture: add <chore> to <user> due <date> every <X>
+    # Improved regex to capture recurrence in more natural ways
     add_pattern = re.compile(
-        r'add\s+(.+?)\s+to\s+(\w+)(?:\s+due\s+(.+?))?(?:\s+every\s+(.+))?$',
+        r'add\s+(.*?)\s+to\s+(\w+)'                     # chore name and user
+        r'(?:\s+due\s+([a-zA-Z0-9\s\-]+?))?'            # optional due date
+        r'(?:\s+(?:every\s+(\w+)|\b(daily|weekly|monthly)))?',  # optional recurrence
         re.IGNORECASE
     )
 
     match = add_pattern.match(body)
     if match:
-        chore_name, user, due_text, recurrence_text = match.groups()
+        chore_name, user, due_text, recurrence_text_1, recurrence_text_2 = match.groups()
         user = user.capitalize()
 
         if user not in USERS:
@@ -254,20 +256,22 @@ def sms_reply():
         due_date = parsed_date.strftime("%Y-%m-%d")
 
         # Normalize recurrence
+        recurrence_raw = recurrence_text_1 or recurrence_text_2
         recurrence = None
-        if recurrence_text:
-            recurrence_text = recurrence_text.lower().strip()
-            if recurrence_text in ["day", "daily"]:
+        if recurrence_raw:
+            rt = recurrence_raw.lower().strip()
+            if rt in ["day", "daily"]:
                 recurrence = "daily"
-            elif recurrence_text in ["week", "weekly"]:
+            elif rt in ["week", "weekly"]:
                 recurrence = "weekly"
-            elif recurrence_text in ["month", "monthly"]:
+            elif rt in ["month", "monthly"]:
                 recurrence = "monthly"
-            elif recurrence_text.isdigit():
-                recurrence = f"every {recurrence_text}"
-            elif re.match(r"every \d+", f"every {recurrence_text}"):
-                recurrence = f"every {recurrence_text}"
+            elif rt.isdigit():
+                recurrence = f"every {rt}"
+            elif rt.startswith("every "):
+                recurrence = rt
 
+        # Add the chore
         success, message = chores_app.add_chore(
             chore_name.strip(),
             due_date,
@@ -277,14 +281,10 @@ def sms_reply():
         response.message(message)
         return str(response)
 
+    # Default fallback response
     response.message("Please reply with 'DONE' to mark your latest chore as completed. Or try 'add vacuum to Erica due tomorrow every week'.")
     return str(response)
 
-
-
-    
-
- 
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
