@@ -189,93 +189,56 @@ def complete_chore(chore_id):
 
 @app.route('/sms', methods=['POST'])
 def sms_reply():
-    # Get the incoming SMS details
     from_number = request.form.get('From')
     body = request.form.get('Body', '').strip()
 
     response = MessagingResponse()
-    
-    # Match Done 
-    if body.upper() == 'DONE':
+
+    # Match DONE
+    if body.upper() == "DONE":
         success, message = chores_app.complete_chore_by_sms(from_number)
         response.message(message)
         return str(response)
-    
-    #Flexible ADD command
-    add_pattern = re.compile(r'add\s+(.+?)\s+to\s+(\w+)(?:\s+due\s+(.+))?$', re.IGNORECASE)
-    
-    # Match ADD command: "Add vacuum to Erica"
+
+    # Match "add vacuum to Erica due tomorrow"
+    add_pattern = re.compile(
+        r'add\s+(.+?)\s+to\s+(\w+)(?:\s+due\s+(.+))?$',
+        re.IGNORECASE
+    )
+
     match = add_pattern.match(body)
     if match:
         chore_name, user, due_text = match.groups()
-        user = user.capitalize() # Normalize casing
+        user = user.capitalize()
 
         if user not in USERS:
             response.message(f"Unknown user '{user}'.")
             return str(response)
-        
-        # Handle due date or default to tomorrow
+
+        # Parse date or default to tomorrow
         if due_text:
             parsed_date = dateparser.parse(due_text)
         else:
             parsed_date = datetime.now() + timedelta(days=1)
 
         if not parsed_date:
-            response.message("Couldn't Understand the due date. Try a date like '2025-06-01' or 'next Friday'.")
+            response.message("Couldn't understand the due date. Try 'YYYY-MM-DD' or natural dates like 'next Friday'.")
             return str(response)
-        
+
         due_date = parsed_date.strftime("%Y-%m-%d")
 
-        success, message = chores_app.add_chore(chore_name, due_date, user)
+        success, message = chores_app.add_chore(chore_name.strip(), due_date, user)
         response.message(message)
         return str(response)
 
-    # Unknown Command
-    response.message("Unknown command. Use:\n- DONE\n- ADD: <task> to <user> due YYYY-MM-DD")
+    # Default fallback
+    response.message("Please reply with 'DONE' to mark your latest chore as completed. Or 'ADD vacuum to Erica due tomorrow' to create one.")
     return str(response)
 
-    # elif body.upper().startswith('ADD:'):
-    #     try:
-    #         # Get Sender
-    #         user_from = next((name for name, num in USERS.items() if num == from_number), None)
-    #         if not user_from:
-    #             response.message("Your number is not associated with a user.")
-    #             return str(response)
-            
-    #         content = body[4:].strip()
-    #         parts = [part.strip() for part in content.split(',')]
 
-    #         if len(parts) < 2:
-    #             response.message("Invalid format. Use: ADD: Chore, YYYY-MM-DD, [optional user]")
-    #             return str(response)
-            
-    #         chore_name = parts[0]
-    #         due_date = parts[1]
-    #         target_user = parts[2] if len(parts) > 2 else user_from
-
-    #         if target_user not in USERS:
-    #             response.message(f"User '{target_user}' not found.")
-    #             return str(response)
-            
-    #         success,msg = chores_app.add_chore(chore_name , due_date , assigned_user=target_user)
-
-    #         if success:
-    #             # Notify User if Different from Sender
-    #             if target_user != user_from:
-    #                 chores_app.send_sms(target_user, f"{user_from}added a chore for you: '{chore_name}', due {due_date}.")
-
-    #             # Confirm to Sender
-    #             response.message(f"Chore '{chore_name}' for {target_user} added successfully.")
-    #         else:
-    #             response.message(msg)
-
-    #     except Exception as e:
-    #         response.message("Error processing your request. Format: ADD: chore, YYYY-MM-DD, [Optional User]")
-
-    # else:
-    #     response.message("Please reply with 'DONE' to mark your latest chore as completed. Or 'ADD: chore, YYYY-MM-DD, [Optional User]' to create one.")
     
-    # return str(response)
+
+ 
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
