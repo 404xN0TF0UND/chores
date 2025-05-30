@@ -47,7 +47,7 @@ class ChoresApp:
         with open(DATA_FILE, 'w') as f:
             json.dump(self.chores, f, indent=4)
 
-    def add_chore(self, name, due_date, assigned_user=None):
+    def add_chore(self, name, due_date, assigned_user=None, recurrence=None):
         try:
             datetime.strptime(due_date, "%Y-%m-%d")
             chore = {
@@ -55,7 +55,8 @@ class ChoresApp:
                 "name": name,
                 "due_date": due_date,
                 "assigned_user": assigned_user,
-                "completed": False
+                "completed": False,
+                "recurrence": recurrence  # New
             }
             self.chores.append(chore)
             self.save_data()
@@ -83,9 +84,35 @@ class ChoresApp:
             if chore["id"] == chore_id:
                 chore["completed"] = True
                 self.save_data()
+
+                # Handle recurrence
+                if chore.get("recurrence"):
+                    self._create_next_recurrence(chore)
+
                 return True, f"Chore '{chore['name']}' marked as completed."
         return False, f"Chore ID {chore_id} not found."
 
+    def _create_next_recurrence(self,chore):
+        recurrence = chore.get("recurrence")
+        current_due = datetime.strptime(chore["due_date"], "%Y-%m-%d")
+
+        if recurrence == "daily":
+            next_due = current_due + timedelta(days=1)
+        elif recurrence == "weekly":
+            next_due = current_due + timedelta(weeks=1)
+        elif recurrence == "monthly":
+            next_due = current_due.replace(month=current_due.month % 12 +1)
+        elif recurrence.startswith("every "):
+            try:
+                days = int(recurrence.split()[1])
+                next_due = current_due + timedelta(days=days)
+            except Exception:
+                return
+        else:
+            return
+        self.add_chore(chore["name"], next_due.strftime("%Y-%m-%d"), chore["assigned_user"], recurrence)
+    
+    
     def complete_chore_by_sms(self, phone_number):
         # Find the user by phone number
         user = next((name for name, num in USERS.items() if num == phone_number), None)
@@ -194,28 +221,27 @@ def sms_reply():
 
     response = MessagingResponse()
 
-    # Match DONE
     if body.upper() == "DONE":
         success, message = chores_app.complete_chore_by_sms(from_number)
         response.message(message)
         return str(response)
 
-    # Match "add vacuum to Erica due tomorrow"
+    # Regex to capture: add <chore> to <user> due <date> every <X>
     add_pattern = re.compile(
-        r'add\s+(.+?)\s+to\s+(\w+)(?:\s+due\s+(.+))?$',
+        r'add\s+(.+?)\s+to\s+(\w+)(?:\s+due\s+(.+?))?(?:\s+every\s+(.+))?$',
         re.IGNORECASE
     )
 
     match = add_pattern.match(body)
     if match:
-        chore_name, user, due_text = match.groups()
+        chore_name, user, due_text, recurrence_text = match.groups()
         user = user.capitalize()
 
         if user not in USERS:
             response.message(f"Unknown user '{user}'.")
             return str(response)
 
-        # Parse date or default to tomorrow
+        # Handle due date
         if due_text:
             parsed_date = dateparser.parse(due_text)
         else:
@@ -227,13 +253,33 @@ def sms_reply():
 
         due_date = parsed_date.strftime("%Y-%m-%d")
 
-        success, message = chores_app.add_chore(chore_name.strip(), due_date, user)
+        # Normalize recurrence
+        recurrence = None
+        if recurrence_text:
+            recurrence_text = recurrence_text.lower().strip()
+            if recurrence_text in ["day", "daily"]:
+                recurrence = "daily"
+            elif recurrence_text in ["week", "weekly"]:
+                recurrence = "weekly"
+            elif recurrence_text in ["month", "monthly"]:
+                recurrence = "monthly"
+            elif recurrence_text.isdigit():
+                recurrence = f"every {recurrence_text}"
+            elif re.match(r"every \d+", f"every {recurrence_text}"):
+                recurrence = f"every {recurrence_text}"
+
+        success, message = chores_app.add_chore(
+            chore_name.strip(),
+            due_date,
+            assigned_user=user,
+            recurrence=recurrence
+        )
         response.message(message)
         return str(response)
 
-    # Default fallback
-    response.message("Please reply with 'DONE' to mark your latest chore as completed. Or 'ADD vacuum to Erica due tomorrow' to create one.")
+    response.message("Please reply with 'DONE' to mark your latest chore as completed. Or try 'add vacuum to Erica due tomorrow every week'.")
     return str(response)
+
 
 
     
