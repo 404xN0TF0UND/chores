@@ -26,6 +26,7 @@ python-dotenv==1.1.0
 pytz==2025.2
 regex==2024.11.6
 requests==2.32.3
+schedule==1.2.2
 six==1.17.0
 twilio==9.6.1
 tzlocal==5.3.1

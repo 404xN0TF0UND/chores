@@ -2,6 +2,9 @@ import json
 import os
 import re
 import dateparser
+import schedule
+import time
+import threading
 from datetime import datetime , timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash
 from twilio.rest import Client
@@ -153,7 +156,10 @@ class ChoresApp:
     def get_unassigned_chores(self):
         return [chore for chore in self.chores if not chore["assigned_user"] and not chore["completed"]]
 
+    
+
 # Initialize Flask app
+
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 chores_app = ChoresApp()
@@ -218,48 +224,81 @@ def complete_chore(chore_id):
 def sms_reply():
     from_number = request.form.get('From')
     body = request.form.get('Body', '').strip()
-
     response = MessagingResponse()
 
+    # Identify the user by phone number
+    user = next((name for name, num in USERS.items() if num == from_number), None)
+
+    if not user:
+        response.message("Your phone number isn't registered. Contact the admin to be added.")
+        return str(response)
+
+    # LIST command
+    if body.upper() == "LIST":
+        chores = chores_app.get_chores(user=user)
+        if not chores:
+            response.message("You have no assigned chores at the moment.")
+        else:
+            reply = "Your chores:\n"
+            for chore in chores[:5]:
+                reply += f"- {chore['name']} (due {chore['due_date']})\n"
+            response.message(reply)
+        return str(response)
+
+    # DONE <chore name>
+    done_match = re.match(r"done\s+(.+)", body, re.IGNORECASE)
+    if done_match:
+        chore_name = done_match.group(1).strip().lower()
+        user_chores = [c for c in chores_app.get_chores(user=user) if not c["completed"]]
+        matching = [c for c in user_chores if chore_name in c["name"].lower()]
+
+        if not matching:
+            response.message(f"No matching chore found with name '{chore_name}'.")
+        elif len(matching) > 1:
+            names = ", ".join([c["name"] for c in matching])
+            response.message(f"Multiple matches found: {names}. Please be more specific.")
+        else:
+            chore = matching[0]
+            chores_app.complete_chore(chore["id"])
+            response.message(f"Chore '{chore['name']}' marked as completed.")
+        return str(response)
+
+    # Basic DONE (complete most recent)
     if body.upper() == "DONE":
         success, message = chores_app.complete_chore_by_sms(from_number)
         response.message(message)
         return str(response)
 
-    # Improved regex to capture recurrence in more natural ways
+    # ADD chore pattern
     add_pattern = re.compile(
-        r'add\s+(.*?)\s+to\s+(\w+)'                     # chore name and user
-        r'(?:\s+due\s+([a-zA-Z0-9\s\-]+?))?'            # optional due date
-        r'(?:\s+(?:every\s+(\w+)|\b(daily|weekly|monthly)))?',  # optional recurrence
+        r'add\s+(.*?)\s+to\s+(\w+)(?:\s+due\s+([a-zA-Z0-9\s\-]+))?(?:\s+every\s+(\w+))?$',
         re.IGNORECASE
     )
-
     match = add_pattern.match(body)
     if match:
-        chore_name, user, due_text, recurrence_text_1, recurrence_text_2 = match.groups()
-        user = user.capitalize()
+        chore_name, assigned_user, due_text, recurrence_text = match.groups()
+        assigned_user = assigned_user.capitalize()
 
-        if user not in USERS:
-            response.message(f"Unknown user '{user}'.")
+        if assigned_user not in USERS:
+            response.message(f"Unknown user '{assigned_user}'.")
             return str(response)
 
-        # Handle due date
+        # Parse due date
         if due_text:
             parsed_date = dateparser.parse(due_text)
         else:
             parsed_date = datetime.now() + timedelta(days=1)
 
         if not parsed_date:
-            response.message("Couldn't understand the due date. Try 'YYYY-MM-DD' or natural dates like 'next Friday'.")
+            response.message("Couldn't understand the due date. Try 'next Friday' or '2025-06-01'.")
             return str(response)
 
         due_date = parsed_date.strftime("%Y-%m-%d")
 
         # Normalize recurrence
-        recurrence_raw = recurrence_text_1 or recurrence_text_2
         recurrence = None
-        if recurrence_raw:
-            rt = recurrence_raw.lower().strip()
+        if recurrence_text:
+            rt = recurrence_text.lower().strip()
             if rt in ["day", "daily"]:
                 recurrence = "daily"
             elif rt in ["week", "weekly"]:
@@ -270,21 +309,67 @@ def sms_reply():
                 recurrence = f"every {rt}"
             elif rt.startswith("every "):
                 recurrence = rt
+        elif due_text:
+            dt = due_text.lower().strip()
+            if dt in ["daily", "weekly", "monthly"]:
+                recurrence = dt
+                parsed_date = datetime.now() + timedelta(days=1)
+
+        # Final due date safety net
+        if not parsed_date:
+            parsed_date = datetime.now() + timedelta(days=1)
+
+        due_date = parsed_date.strftime("%Y-%m-%d")
 
         # Add the chore
         success, message = chores_app.add_chore(
             chore_name.strip(),
             due_date,
-            assigned_user=user,
+            assigned_user=assigned_user,
             recurrence=recurrence
         )
         response.message(message)
         return str(response)
 
-    # Default fallback response
-    response.message("Please reply with 'DONE' to mark your latest chore as completed. Or try 'add vacuum to Erica due tomorrow every week'.")
+    # Fallback
+    response.message("Try one of these:\n- LIST\n- DONE\n- DONE laundry\n- Add trash to Becky due tomorrow every 2")
     return str(response)
 
+# Reminder function
+def send_daily_reminders():
+    for user, number in USERS.items():
+        chores = chores_app.get_chores(user=user)
+        # Filter for incomplete chores
+        pending = [chore for chore in chores if not chore["completed"]]
+
+        if not pending:
+            message = "You have no chores assigned for today. 🎉"
+        else:
+            upcoming = [
+                f"{chore['name']} (due {chore['due_date']})"
+                for chore in sorted(pending, key=lambda x: x["due_date"])
+            ][:5]
+            message = "Today's chores:\n" + "\n".join(upcoming)
+
+        chores_app.send_sms(user, message)
+
+# Scheduler setup
+def start_scheduler():
+    def run_schedule():
+        while True:
+            schedule.run_pending()
+            time.sleep(60)
+
+    # Schedule to run at 8:00 AM daily
+    schedule.every().day.at("08:00").do(send_daily_reminders)
+
+    # Start the scheduler in a background thread
+    thread = threading.Thread(target=run_schedule)
+    thread.daemon = True
+    thread.start()
+
+# Start daily SMS reminder
+start_scheduler()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
