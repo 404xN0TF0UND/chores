@@ -17,7 +17,7 @@ load_dotenv()
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
-print(f"Loaded TWILLIO_PHONE_NUMBER: {TWILIO_PHONE_NUMBER}")
+# print(f"Loaded TWILLIO_PHONE_NUMBER: {TWILIO_PHONE_NUMBER}")
 
 # File to store chore and user data
 DATA_FILE = "chores.json"
@@ -170,11 +170,14 @@ def index():
     return render_template('index.html', users=USERS.keys())
 
 @app.route('/chores')
-def list_chores():
+def view_chores():
     user = request.args.get('user')
     show_all = request.args.get('show_all') == 'true'
+
+    # Filter chores
     chores = chores_app.get_chores(user=user, show_all=show_all)
-    return render_template('chores.html', chores=chores, users=USERS.keys(), selected_user=user)
+
+    return render_template('chores.html', chores=chores, users=USERS.keys(), selected_user=user) 
 
 @app.route('/unassigned')
 def unassigned_chores():
