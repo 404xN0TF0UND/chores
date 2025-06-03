@@ -87,7 +87,7 @@ class ChoresApp:
         
         # Notify Admins
         for admin in ADMINS:
-            if chore.assigned_user and admin != chore.assigned_user:
+            if chore.assigned_user != chore.assigned_user and admin in USERS:
                 self.send_sms(admin, f"Chore '{chore.name}' completed by {chore.assigned_user} on {chore.due_date}.")
             else:
                 # If the chore was unassigned, notify all admins
