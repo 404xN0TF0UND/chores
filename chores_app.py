@@ -20,13 +20,11 @@ TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
 
 USERS = {
-    "Ronnie": "+17173770285",
-    "Becky": "+12405294440",
-    "Dan": "+12234260451",
-    "Cait": "+17173870963",
-    "Toby": "+17173876892",
-    "Erica": "+17173774563"
-}
+    key.replace("USER_", ""): value
+    for key, value in os.environ.items() if key.startswith("USER_")
+   }
+
+ADMINS = ["Ronnie", "Becky"]
 
 twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
@@ -38,6 +36,13 @@ def clear_old_states():
     stale_keys = [k for k, v in state_tracker.items() if (now - v['last_updated']).total_seconds() > 86400]
     for k in stale_keys:
         del state_tracker[k]
+
+def get_user_by_phone(phone_number):
+    """Returns the username if the phone number is registered, else None."""
+    for user, stored_number in USERS.items():
+        if stored_number[-10:] == phone_number[-10:]:  # Match last 10 digits for flexibility
+            return user
+    return None
 
 # Chore manager class
 class ChoresApp:
@@ -76,8 +81,23 @@ class ChoresApp:
         chore = Chore.query.get(chore_id)
         if not chore:
             return False, f"Chore ID {chore_id} not found."
+        
         chore.completed = True
         db.session.commit()
+        
+        # Notify Admins
+        for admin in ADMINS:
+            if chore.assigned_user and admin != chore.assigned_user:
+                self.send_sms(admin, f"Chore '{chore.name}' completed by {chore.assigned_user} on {chore.due_date}.")
+            else:
+                # If the chore was unassigned, notify all admins
+                if admin in USERS:
+                    self.send_sms(admin, f"Chore '{chore.name}' completed on {chore.due_date}.")
+        # Notify the assigned user if any
+        if chore.assigned_user and chore.assigned_user in USERS:        
+            self.send_sms(admin, f"Chore '{chore.name}' completed by {chore.assigned_user or 'Unassigned'} on {chore.due_date}.")
+
+        # Handle recurrence
         if chore.recurrence:
             self._create_next_recurrence(chore)
         return True, f"Chore '{chore.name}' marked as completed."
@@ -143,6 +163,19 @@ class ChoresApp:
 
     def get_unassigned_chores(self):
         return Chore.query.filter_by(assigned_user=None, completed=False).order_by(Chore.due_date).all()
+    
+    def get_user_by_phone(self, phone_number):
+    #Returns the username if the phone number is registered, else None.
+        for name, number in USERS.items():
+            if number == phone_number:
+                return name
+        return None
+    
+    def get_chore_history(self, user=None):
+        query = Chore.query.filter_by(completed=True)
+        if user:
+            query = query.filter_by(assigned_user=user)
+            return query.order_by(Chore.updated_at.desc()).all()
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
@@ -159,70 +192,157 @@ def sms_reply():
     from_number = request.form.get('From')
     body = request.form.get('Body', '').strip()
     response = MessagingResponse()
+
+    # Identify user
     user = next((name for name, num in USERS.items() if num == from_number), None)
     if not user:
-        response.message("Your phone number isn't registered.")
+        response.message("Your phone number isn't registered. Contact the admin.")
         return str(response)
 
-    clear_old_states()
-    state = state_tracker.get(from_number, {"context": {}, "last_updated": datetime.utcnow()})
-    state["last_updated"] = datetime.utcnow()
-    lower_body = body.lower()
+    # Normalize message
+    message = body.lower()
 
-    # LIST
-    if lower_body == "list":
+    # Check existing conversation state
+    state = ConversationState.query.filter_by(phone_number=from_number).first()
+
+    # Shortcut commands
+    if message == "list":
         chores = chores_app.get_chores(user=user)
         if not chores:
-            response.message("You have no chores assigned.")
+            response.message("You have no assigned chores.")
         else:
-            msg = "Your chores:\n" + "\n".join(f"- {c.name} (due {c.due_date})" for c in chores[:5])
-            response.message(msg)
+            reply = "Your chores:\n" + "\n".join(
+                f"- {ch.name} (due {ch.due_date})" for ch in chores[:5])
+            response.message(reply)
         return str(response)
 
-    # DONE <chore>
-    done_match = re.match(r"done\s+(.+)", body, re.IGNORECASE)
-    if done_match:
-        target = done_match.group(1).strip().lower()
+    if message.startswith("done"):
+        chore_name = message[5:].strip().lower()
         user_chores = chores_app.get_chores(user=user, show_all=True)
-        matching = [c for c in user_chores if target in c.name.lower()]
+        matching = [c for c in user_chores if chore_name in c.name.lower()]
         if not matching:
-            response.message(f"No matching chore named '{target}'.")
+            response.message(f"No chore found matching '{chore_name}'.")
         elif len(matching) > 1:
-            response.message("Multiple matches: " + ", ".join(c.name for c in matching))
+            names = ", ".join(c.name for c in matching)
+            response.message(f"Multiple chores match: {names}. Be more specific.")
         else:
-            chores_app.complete_chore(matching[0].id)
-            response.message(f"Completed: {matching[0].name}")
+            chore = matching[0]
+            chores_app.complete_chore(chore.id)
+            response.message(f"Chore '{chore.name}' marked as completed.")
         return str(response)
 
-    # ADD flow using state
-    if lower_body.startswith("add"):
-        add_match = re.match(r"add\s+(.*?)\s+to\s+(\w+)(?:\s+due\s+(.+?))?(?:\s+every\s+(.+))?$", lower_body)
-        if add_match:
-            name, assignee, due_text, recur_text = add_match.groups()
-            if assignee.capitalize() not in USERS:
-                response.message(f"Unknown user '{assignee}'.")
-                return str(response)
-            due = dateparser.parse(due_text) if due_text else datetime.now() + timedelta(days=1)
-            if not due:
-                response.message("Invalid due date. Try 'tomorrow' or '2025-06-01'.")
-                return str(response)
-            recurrence = None
-            if recur_text:
-                if recur_text in ["day", "daily"]: recurrence = "daily"
-                elif recur_text in ["week", "weekly"]: recurrence = "weekly"
-                elif recur_text in ["month", "monthly"]: recurrence = "monthly"
-                elif recur_text.isdigit(): recurrence = f"every {recur_text} days"
-            success, msg = chores_app.add_chore(name, due.strftime("%Y-%m-%d"), assignee.capitalize(), recurrence)
-            response.message(msg)
+    if message == "done":
+        success, msg = chores_app.complete_chore_by_sms(from_number)
+        response.message(msg)
+        return str(response)
+
+    # Check if continuing a previous state
+    if state and state.step == "awaiting_due_date":
+        parsed = dateparser.parse(message)
+        if not parsed:
+            response.message("Couldn't understand the due date. Try again.")
             return str(response)
 
-    response.message("Try:\n- LIST\n- DONE laundry\n- ADD trash to Becky due tomorrow every week")
+        due_date = parsed.strftime("%Y-%m-%d")
+        recurrence = state.recurrence if state.recurrence else None
+        success, msg = chores_app.add_chore(state.chore_name, due_date, assigned_user=user, recurrence=recurrence)
+        db.session.delete(state)
+        db.session.commit()
+        response.message(msg)
+        return str(response)
+
+    # Natural "Add chore" parser
+    match = re.match(r"add\s+(.*?)\s+to\s+(\w+)(?:\s+due\s+(.+?))?(?:\s+every\s+(\w+))?$", message, re.IGNORECASE)
+    if match:
+        chore_name, assigned_user, due_text, recurrence_text = match.groups()
+        assigned_user = assigned_user.capitalize()
+        if assigned_user not in USERS:
+            response.message(f"Unknown user '{assigned_user}'.")
+            return str(response)
+
+        parsed_date = dateparser.parse(due_text) if due_text else None
+        if not parsed_date:
+            # Ask user to clarify due date
+            new_state = ConversationState(
+                phone_number=from_number,
+                step="awaiting_due_date",
+                chore_name=chore_name,
+                recurrence=recurrence_text,
+                last_updated=datetime.now()
+            )
+            db.session.add(new_state)
+            db.session.commit()
+            response.message(f"When is '{chore_name}' due?")
+            return str(response)
+
+        due_date = parsed_date.strftime("%Y-%m-%d")
+        recurrence = None
+        if recurrence_text:
+            rt = recurrence_text.lower()
+            if rt in ["day", "daily"]: recurrence = "daily"
+            elif rt in ["week", "weekly"]: recurrence = "weekly"
+            elif rt in ["month", "monthly"]: recurrence = "monthly"
+            elif rt.isdigit(): recurrence = f"every {rt}"
+            elif rt.startswith("every "): recurrence = rt
+
+        success, msg = chores_app.add_chore(chore_name, due_date, assigned_user=assigned_user, recurrence=recurrence)
+        response.message(msg)
+        return str(response)
+
+    # Fallback if nothing matched
+    response.message(
+        "Try commands like:\n"
+        "- LIST\n"
+        "- DONE\n"
+        "- DONE laundry\n"
+        "- Add trash to Becky due tomorrow every week"
+    )
     return str(response)
 
 @app.route('/')
 def index():
     chores = chores_app.get_chores(show_all=True)
     return render_template('index.html', chores=chores, users=USERS)
+
+@app.route('/chores')
+def view_chores():
+    user = request.args.get('user')
+    show_all = request.args.get('show_all') == 'true'
+    recurrence = request.args.get('recurrence')
+    due_filter = request.args.get('due')
+
+    # Start building query
+    query = Chore.query
+
+    if user:
+        query = query.filter_by(assigned_user=user)
+
+    if not show_all:
+        query = query.filter_by(completed=False)
+
+    if recurrence:
+        query = query.filter_by(recurrence=recurrence)
+
+    if due_filter:
+        today = datetime.now().date()
+        if due_filter == "today":
+            query = query.filter(Chore.due_date == today)
+        elif due_filter == "tomorrow":
+            query = query.filter(Chore.due_date == today + timedelta(days=1))
+        elif due_filter == "overdue":
+            query = query.filter(Chore.due_date < today, Chore.completed == False)
+
+    chores = query.order_by(Chore.due_date).all()
+
+    return render_template(
+        'chores.html',
+        chores=chores,
+        users=USERS.keys(),
+        selected_user=user,
+        selected_recurrence=recurrence,
+        selected_due_filter=due_filter,
+        show_all=show_all
+    )
 
 @app.route('/add', methods=['POST'])
 def add_chore_route():
@@ -252,6 +372,13 @@ def send_daily_reminders():
         if chores:
             msg = f"Good morning {user}! Your chores today:\n" + "\n".join(f"- {c.name} (due {c.due_date})" for c in chores[:5])
             chores_app.send_sms(user, msg)
+
+@app.route('/history')
+def chore_history():
+    user = request.args.get('user')
+    chores = chores_app.get_chore_history(user=user)
+    return render_template('history.html', chores=chores, users=USERS.keys(), selected_user=user)
+
 
 def start_scheduler():
     def run_schedule():
