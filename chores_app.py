@@ -8,11 +8,9 @@ from apscheduler.triggers.interval import IntervalTrigger
 from scheduler import BackgroundScheduler
 import re
 import dateparser
-from models import db, Chore, ConversationState
-from utils import (
-    USERS, ADMINS, get_user_by_phone, get_phone_by_user,
-    parse_due_date, get_recurrence, send_sms, dusty_response, get_intent
-)
+from models import db, Chore, ConversationState, db_session 
+from utils import USERS, ADMINS, get_user_by_phone, get_phone_by_user, parse_due_date, get_recurrence, send_sms, dusty_response, get_intent, parse_command, get_user_by_name, get_user_assigned_chores, complete_chore, clean_conversations
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -29,8 +27,12 @@ class ChoresApp:
         self.scheduler.start()
 
     def start_scheduler(self):
-        self.scheduler.add_job(self.send_due_reminders, 'interval', hours=1)
+        # Schedule daily reminders for due chores
+        self.scheduler.add_job(self.send_due_reminders, 'cron', hour=8, minute=0)
 
+        # Everyday at mmidnight clean up conversations
+        self.scheduler.add_job(lambda: clean_conversations(db_session()), 'cron', hour=0, minute=0)
+    
     def send_due_reminders(self):
         now = datetime.now()
         with self.app.app_context():
@@ -117,55 +119,56 @@ chores_app.start_scheduler()
 
 @app.route("/sms", methods=["POST"])
 def sms_reply():
-    body = request.form['Body'].strip()
-    from_number = request.form['From']
-    response = MessagingResponse()
-    intent = get_intent(body)
-    user = get_user_by_phone(from_number)
+    from_number = request.form["From"]
+    body = request.form["Body"]
+
+    session = db_session()
+    user = get_user_by_phone(session, from_number)
 
     if not user:
-        response.message(dusty_response("unknown", success=False))
-        return str(response)
+        return str(dusty_response("Unrecognized user."))  # Skip further intent parsing
 
-    print(f"SMS from {from_number}: {body}")
-    print(f"Intent: {intent}")
+    command = parse_command(body)
 
-    if intent == "help":
-        response.message("Try commands like:\n- LIST\n- DONE laundry\n- DELETE laundry\n- ADD vacuum to Erica due Friday every week")
-        return str(response)
-
-    if intent == "list":
-        with app.app_context():
-            chores = Chore.query.filter_by(assigned_user=user, completed=False).all()
-            if chores:
-                chore_list = "\n".join([f"{c.name} (due {c.due_date.strftime('%Y-%m-%d')})" for c in chores[:5]])
-                response.message(f"Here’s what you’ve got:\n{chore_list}")
-            else:
-                response.message("No chores for you right now. Dusty is impressed.")
-        return str(response)
-
-    if intent == "done":
-        match = re.search(r'done (.+)', body, re.IGNORECASE)
-        if match:
-            chore_name = match.group(1)
-            success, matched_name = chores_app.complete_chore(chore_name, user)
-            if success:
-                response.message(dusty_response("done_success").replace("{chore}", matched_name))
-            else:
-                response.message("Dusty couldn’t find that one. Try being more specific.")
+    # --- Handle parsed intents ---
+    if command["intent"] == "complete_chore":
+        chore = session.query(Chore).filter(
+            Chore.name.ilike(command["name"]),
+            Chore.assigned_to == user,
+            Chore.completed == False
+        ).first()
+        if chore:
+            complete_chore(session, chore)
+            return dusty_response(f"done {chore.name}", user.name)
         else:
-            result = chores_app.complete_chore_by_sms(from_number)
-            response.message(result)
-        return str(response)
+            return dusty_response("No matching chore found.", user.name)
 
-    if intent == "add":
-        result = chores_app.handle_add_chore(body, user)
-        response.message(result)
-        return str(response)
+    elif command["intent"] == "list_chores":
+        chores = get_user_assigned_chores(session, user.id)
+        if not chores:
+            return dusty_response("no_chores right now. Must be your lucky day 🍀", user.name)
+        return dusty_response("list") + "\n" + "\n".join(
+            [f"• {c.name} (due {c.due_date.strftime('%b %d')})" for c in chores]
+        )
 
-    response.message("Try commands like:\n- LIST\n- DONE laundry\n- DELETE laundry\n- Add laundry to Becky due Friday every week")
-    return str(response)
+    elif command["intent"] == "add_chore":
+        from models import User, Chore
+        assignee = get_user_by_name(session, command["assignee"])
+        if not assignee:
+            return dusty_response("That user doesn’t exist.", user.name)
+        new_chore = Chore(
+            name=command["name"],
+            assigned_to=assignee,
+            due_date=datetime.strptime(command["due_date"], "%Y-%m-%d"),
+            recurrence=command.get("recurrence")
+        )
+        session.add(new_chore)
+        session.commit()
+        return dusty_response("add", user.name)
 
+    else:
+        return dusty_response("unknown", user.name)
+  
 
 @app.route("/")
 def index():
