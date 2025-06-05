@@ -1,7 +1,7 @@
 import os
 import re
 from datetime import datetime, timedelta
-from dateutil import parse as date_parser
+from dateutil import parser as date_parser
 from flask import request, current_app
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
