@@ -3,6 +3,7 @@ import re
 from datetime import datetime, timedelta
 from flask import request, current_app
 from twilio.twiml.messaging_response import MessagingResponse
+from twilio.rest import Client
 from models import db, Chore, User, ChoreHistory
 
 # --- Dusty's wit ---
@@ -167,3 +168,24 @@ def parse_recurrence(text):
     elif match := re.search(r'every (\d+)', text):
         return f"every {match.group(1)}"
     return None
+
+# -------SMS ------
+def send_sms(to, body):
+    account_sid = os.getenv("TWILIO_ACCOUNT_SID")
+    auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+    from_number = os.getenv("TWILIO_PHONE_NUMBER")
+
+    if not all([account_sid, auth_token, from_number]):
+        print("Missing Twilio configuration in environment variables.")
+        return
+
+    try:
+        client = Client(account_sid, auth_token)
+        message = client.messages.create(
+            body=body,
+            from_=from_number,
+            to=to
+        )
+        print(f"Sent SMS to {to}: {body}")
+    except Exception as e:
+        print(f"Failed to send SMS to {to}: {e}")
