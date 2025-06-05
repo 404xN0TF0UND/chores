@@ -35,7 +35,7 @@ with app.app_context():
 
 start_scheduler(app)
 #_______Temporary: for testing purposes only_____________________________
-@app.route('debug/chores')
+@app.route('/debug/chores')
 def debug_chores():
     chores = Chore.query.all()
     return {
