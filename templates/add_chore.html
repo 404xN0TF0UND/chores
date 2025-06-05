@@ -1,24 +1,27 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% block content %}
-    <h1>Add Chore</h1>
-    <form method="post">
-        <div class="mb-3">
-            <label for="name" class="form-label">Chore Name</label>
-            <input type="text" class="form-control" id="name" name="name" required>
-        </div>
-        <div class="mb-3">
-            <label for="due_date" class="form-label">Due Date (YYYY-MM-DD)</label>
-            <input type="text" class="form-control" id="due_date" name="due_date" required>
-        </div>
-        <div class="mb-3">
-            <label for="assigned_user" class="form-label">Assign To (Optional)</label>
-            <select class="form-select" id="assigned_user" name="assigned_user">
-                <option value="">Unassigned</option>
-                {% for user in users %}
-                    <option value="{{ user }}">{{ user }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <button type="submit" class="btn btn-primary">Add Chore</button>
-    </form>
+<h2 class="mb-4">Add New Chore</h2>
+<form method="POST" action="{{ url_for('add_chore') }}">
+    <div class="mb-3">
+        <label for="name" class="form-label">Chore Name</label>
+        <input type="text" class="form-control" id="name" name="name" required>
+    </div>
+    <div class="mb-3">
+        <label for="assigned_to" class="form-label">Assign To</label>
+        <select class="form-select" name="assigned_to" id="assigned_to" required>
+            {% for user in users %}
+                <option value="{{ user.id }}">{{ user.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="mb-3">
+        <label for="due_date" class="form-label">Due Date</label>
+        <input type="date" class="form-control" id="due_date" name="due_date" required>
+    </div>
+    <div class="mb-3">
+        <label for="recurrence" class="form-label">Recurrence</label>
+        <input type="text" class="form-control" id="recurrence" name="recurrence" placeholder="e.g., daily, weekly">
+    </div>
+    <button type="submit" class="btn btn-primary">Add Chore</button>
+</form>
 {% endblock %}

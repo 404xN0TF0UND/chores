@@ -1,11 +1,27 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% block content %}
-    <h1>Welcome to the Chores App</h1>
-    <p>Select a user to view their chores or manage chores from the navigation bar.</p>
-    <h3>Users</h3>
-    <ul>
-        {% for user in users %}
-            <li><a href="{{ url_for('list_chores', user=user) }}">{{ user }}</a></li>
-        {% endfor %}
-    </ul>
+<h2 class="mb-4">Chore List</h2>
+<div class="row">
+    {% for chore in chores %}
+        <div class="col-md-6">
+            <div class="card mb-3 {% if chore.completed %}bg-success{% else %}bg-secondary{% endif %}">
+                <div class="card-body">
+                    <h5 class="card-title">{{ chore.name }}</h5>
+                    <p class="card-text">
+                        Assigned to: <strong>{{ chore.assigned_to.name }}</strong><br>
+                        Due: {{ chore.due_date.strftime('%Y-%m-%d') }}<br>
+                        {% if chore.recurrence %}
+                            Repeats: {{ chore.recurrence }}
+                        {% endif %}
+                    </p>
+                    {% if not chore.completed %}
+                        <a href="{{ url_for('complete_chore', chore_id=chore.id) }}" class="btn btn-light">Mark Complete</a>
+                    {% else %}
+                        <span class="badge bg-light text-dark">Completed</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
 {% endblock %}
