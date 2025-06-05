@@ -39,7 +39,7 @@ start_scheduler(app)
 def debug_chores():
     chores = Chore.query.all()
     return {
-        "totoal": len(chores),
+        "total": len(chores),
         "chores": [chore.name for chore in chores]
     }
 
@@ -55,7 +55,7 @@ def debug_env():
 #___________________________________________________
 @app.route('/')
 def index():
-    chores = get_assigned_chores(user_id=None)  # None for all users
+    chores = Chore.query.order_by(Chore.due_date).all()
     return render_template('index.html', chores=chores)
 
 @app.route('/completed')
