@@ -1,10 +1,13 @@
 import os
 import re
 from datetime import datetime, timedelta
+from dateutil import parse as date_parser
 from flask import request, current_app
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
 from models import db, Chore, User, ChoreHistory
+
+INTENTS = ["add", "complete", "done", "list", "unassign", "help"]
 
 # --- Dusty's wit ---
 import random
@@ -153,15 +156,77 @@ def send_reminders(app):
                 )
 
 # --- SMS parsing ---
+def parse_natural_date(text):
+    text = text.lower().strip()
+
+    if text in ['today']:
+        return datetime.today()
+    elif text in ['tomorrow']:
+        return datetime.today() + timedelta(days=1)
+
+    # Handle "in X days"
+    match = re.match(r'in (\d+) days?', text)
+    if match:
+        days = int(match.group(1))
+        return datetime.today() + timedelta(days=days)
+
+    try:
+        # Let dateutil try natural language (e.g., "next Friday")
+        return date_parser.parse(text, fuzzy=True, default=datetime.today())
+    except (ValueError, TypeError):
+        return None
+
 def parse_sms(body):
-    body = body.strip().lower()
-    if body.startswith("done "):
-        return {"intent": "complete", "chore": body[5:].strip()}
-    elif body.startswith("add "):
-        return {"intent": "add", "raw": body[4:].strip()}
-    elif "list" in body:
-        return {"intent": "list"}
-    return {"intent": "unknown"}
+    text = body.strip().lower()
+    intent = None
+    entities = {}
+
+    # Normalize whitespace
+    text = re.sub(r"\s+", " ", text)
+
+    # Detect 'done' or 'complete'
+    if text.startswith("done") or text.startswith("complete"):
+        intent = "complete"
+        entities["chore_name"] = text.replace("done", "").replace("complete", "").strip()
+
+    elif text.startswith("add"):
+        intent = "add"
+        # Try to extract: name, assignee, due, recurrence
+        # e.g., "add vacuum to Ronnie due tomorrow every week"
+        match = re.search(r"add (.*?) to (\w+)(?: due (.*?))?(?: every (\w+))?$", text)
+        if match:
+            entities["chore_name"] = match.group(1).strip()
+            entities["assignee"] = match.group(2).strip()
+            due_raw = match.group(3)
+            recurrence = match.group(4)
+            if due_raw:
+                try:
+                    entities["due_date"] = date_parser(due_raw, fuzzy=True)
+                except:
+                    entities["due_date"] = None
+            if recurrence:
+                entities["recurrence"] = recurrence.lower()
+
+    elif text.startswith("list"):
+        intent = "list"
+
+    elif text.startswith("unassign"):
+        intent = "unassign"
+        entities["chore_name"] = text.replace("unassign", "").strip()
+
+    elif text == "help":
+        intent = "help"
+
+    elif text in ["hi", "hello", "hey"]:
+        intent = "greeting"
+
+    else:
+        # Fallback: try inferring "done chore"
+        if "done" in text:
+            intent = "complete"
+            entities["chore_name"] = text.split("done", 1)[1].strip()
+
+    return intent, entities
 
 # --- Recurrence parser ---
 def parse_recurrence(text):

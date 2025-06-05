@@ -19,7 +19,8 @@ from utils import (
     notify_admins,
     get_upcoming_chores,
     list_user_chores,
-    send_sms
+    send_sms,
+    parse_natural_date
 )
 
 load_dotenv()
@@ -35,22 +36,22 @@ with app.app_context():
 
 start_scheduler(app)
 #_______Temporary: for testing purposes only_____________________________
-@app.route('/debug/chores')
-def debug_chores():
-    chores = Chore.query.all()
-    return {
-        "total": len(chores),
-        "chores": [chore.name for chore in chores]
-    }
+# @app.route('/debug/chores')
+# def debug_chores():
+#     chores = Chore.query.all()
+#     return {
+#         "total": len(chores),
+#         "chores": [chore.name for chore in chores]
+#     }
 
-@app.route('/debug/env')
-def debug_env():
-    from os import getenv
-    return {
-        "sid": getenv("TWILIO_ACCOUNT_SID"),
-        "auth": getenv("TWILIO_AUTH_TOKEN"),
-        "number": getenv("TWILIO_PHONE_NUMBER")
-    }
+# @app.route('/debug/env')
+# def debug_env():
+#     from os import getenv
+#     return {
+#         "sid": getenv("TWILIO_ACCOUNT_SID"),
+#         "auth": getenv("TWILIO_AUTH_TOKEN"),
+#         "number": getenv("TWILIO_PHONE_NUMBER")
+#     }
 
 #___________________________________________________
 @app.route('/')
@@ -108,43 +109,62 @@ def add_chore():
     return render_template('add_chore.html', users=users)
 
 @app.route('/sms', methods=['POST'])
-def sms_reply():
-      incoming_msg = request.values.get('Body', '').strip()
-      from_number = request.values.get('From', '')
-      user = get_user_by_phone(from_number)
+@app.route('/sms', methods=['POST'])
+def handle_sms():
+    incoming_msg = request.values.get('Body', '').strip()
+    from_number = request.values.get('From', '').strip()
 
-      resp = MessagingResponse()
+    user = get_user_by_phone(from_number)
+    if not user:
+        return dusty_response("I don't recognize this number. Either you're a ghost or you haven't been added to the system.")
 
-      if not user:
-        resp.message("Sorry, I don't recognize this number. Contact an admin.")
-        return str(resp)
+    # Try parsing intent and entities
+    intent, entities = parse_sms(incoming_msg)
 
-      intent, data = parse_sms(incoming_msg)
+    # Handle known intents
+    if intent == 'add':
+        chore_name = entities.get('chore_name')
+        assignee_name = entities.get('assignee', user.name)
+        due_date = parse_natural_date(entities.get('due_date'))
+        recurrence = entities.get('recurrence')
 
-    # Route intents
-      if intent == 'list_chores':
-        chores = list_user_chores(user.id)
+        assignee = User.query.filter(User.name.ilike(assignee_name)).first()
+        if not assignee:
+            return dusty_response(f"I don't know who '{assignee_name}' is. Try again with a valid user.")
+
+        new_chore = Chore(
+            name=chore_name,
+            assigned_to=assignee,
+            due_date=due_date,
+            recurrence=recurrence
+        )
+        db.session.add(new_chore)
+        db.session.commit()
+
+        notify_admins(f"{user.name} added chore '{chore_name}' for {assignee.name}.")
+        return dusty_response(f"Added chore '{chore_name}' for {assignee.name}. Due: {due_date.strftime('%Y-%m-%d') if due_date else 'whenever'}.")
+
+    elif intent == 'complete':
+        chore_name = entities.get('chore_name')
+        chore = complete_chore_by_name(chore_name, user)
+        if chore:
+            notify_admins(f"{user.name} completed '{chore.name}'.")
+            return dusty_response(f"Marked '{chore.name}' complete. Gold star for you, {user.name}.")
+        else:
+            return dusty_response(f"No matching chore called '{chore_name}'. Maybe it's still on your to-do list of shame?")
+
+    elif intent == 'list':
+        chores = list_user_chores(user)
         if not chores:
-            msg = "You’ve got nothing. Either you’re lucky or lazy. Probably the latter."
-        else:
-            msg = "\n".join([f"• {chore.name} (due {chore.due_date.strftime('%b %d') if chore.due_date else 'someday'})" for chore in chores])
-        resp.message(dusty_response(msg))
-      elif intent == 'complete_chore':
-        chore_name = data.get('chore_name')
-        result = complete_chore_by_name(user.id, chore_name)
-        if result:
-            msg = f"Nice, {chore_name} marked done. Applause. Confetti. Sarcasm."
-            notify_admins(f"{user.name} just finished: {chore_name}")
-        else:
-            msg = f"I looked. No '{chore_name}' found for you. Try again?"
-        resp.message(dusty_response(msg))
-      elif intent == 'add_chore':
-        # Future support for "add chore" via SMS
-        resp.message(dusty_response("Chore creation via SMS isn’t available yet. Try the web UI."))
-      else:
-        resp.message(dusty_response("Try saying something like LIST or DONE mop. Dusty isn’t psychic… yet."))
+            return dusty_response("You're gloriously chore-free.")
+        chores_text = "\n".join([f"• {ch.name} (Due: {ch.due_date.strftime('%Y-%m-%d') if ch.due_date else 'anytime'})" for ch in chores[:5]])
+        return dusty_response(f"Here’s your glorious list of doom:\n{chores_text}")
 
-      return str(resp)
+    elif intent == 'greeting':
+        return dusty_response(f"Ah, greetings {user.name}. I trust you've been diligently ignoring your chores.")
+
+    else:
+        return dusty_response("I couldn't quite make sense of that. Try something like 'add dishes to Becky due Friday' or 'list'.")
 
 if __name__ == '__main__':
     app.run(debug=True)
