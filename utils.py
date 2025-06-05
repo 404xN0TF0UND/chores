@@ -37,15 +37,22 @@ def get_user_by_name(name):
     return User.query.filter(User.name.ilike(name)).first()
 
 def seed_users_from_env():
+    admin_names = os.getenv("ADMINS", "").split(",")
     for key, value in os.environ.items():
         if key.startswith("USER_"):
-            name = key[5:]
-            phone = value
-            if not User.query.filter_by(phone=phone).first():
-                user = User(name=name, phone=phone)
-                if name.lower() in ['ronnie', 'becky']:  # mark admins
-                    user.is_admin = True
-                db.session.add(user)
+            name = key[5:] # Strips USER_ prefix
+            phone = value.strip()
+
+            # Validate phone format (basic check)
+            if not phone.startswith("+"):
+                continue
+            # Check if user exists
+            existing_user = User.query.filter_by(phone=phone).first()
+            if not existing_user:
+                is_admin =name in admin_names
+                new_user = User(name=name, phone=phone, is_admin=is_admin)
+                
+                db.session.add(new_user)
     db.session.commit()
 
 # --- Chore utilities ---
