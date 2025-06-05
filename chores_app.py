@@ -18,7 +18,8 @@ from utils import (
     complete_chore_by_name,
     notify_admins,
     get_upcoming_chores,
-    list_user_chores
+    list_user_chores,
+    send_sms
 )
 
 load_dotenv()
@@ -33,7 +34,25 @@ with app.app_context():
     seed_users_from_env()
 
 start_scheduler(app)
+#_______Temporary: for testing purposes only_____________________________
+@app.route('debug/chores')
+def debug_chores():
+    chores = Chore.query.all()
+    return {
+        "totoal": len(chores),
+        "chores": [chore.name for chore in chores]
+    }
 
+@app.route('/debug/env')
+def debug_env():
+    from os import getenv
+    return {
+        "sid": getenv("TWILIO_ACCOUNT_SID"),
+        "auth": getenv("TWILIO_AUTH_TOKEN"),
+        "number": getenv("TWILIO_PHONE_NUMBER")
+    }
+
+#___________________________________________________
 @app.route('/')
 def index():
     chores = get_assigned_chores(user_id=None)  # None for all users
@@ -62,16 +81,22 @@ def add_chore():
         assigned_to_id = request.form.get('assigned_to') or None
         due_date = request.form.get('due_date')
         recurrence = request.form.get('recurrence')
-        chore = Chore(
+        
+        new_chore = Chore(
             name=name,
             assigned_to_id=assigned_to_id,
             due_date=datetime.strptime(due_date, '%Y-%m-%d') if due_date else None,
             recurrence=recurrence
         )
-        db.session.add(chore)
+        db.session.add(new_chore)
         db.session.commit()
+
+        if new_chore.assigned_to and new_chore.assigned_to.phone:
+            send_sms(new_chore.assigned_to.phone, f"New chore assigned: {new_chore.name} (due {new_chore.due_date.strftime('%b %d') if new_chore.due_date else 'someday'})")
+        
         flash('Chore added successfully')
         return redirect(url_for('index'))
+        
     return render_template('add_chore.html', users=users)
 
 @app.route('/sms', methods=['POST'])
