@@ -63,6 +63,14 @@ def completed():
     chores = get_completed_chores()
     return render_template('completed.html', chores=chores)
 
+@app.route('/complete/<int:chore_id>')
+def complete_chore(chore_id):
+    chore = Chore.query.get_or_404(chore_id)
+    chore.completed = True
+    db.session.commit()
+    flash('Chore marked as complete!')
+    return redirect(url_for('index'))
+
 @app.route('/unassigned')
 def unassigned():
     chores = get_unassigned_chores()

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Completed Chores</h2>
+  {% for chore in chores %}
+    <div class="card mb-3 bg-success">
+      <div class="card-body">
+        <h5 class="card-title">{{ chore.name }}</h5>
+        <p class="card-text">
+          Assigned to: <strong>{{ chore.assigned_to.name if chore.assigned_to else "Unassigned" }}</strong><br>
+          Completed on: {{ chore.due_date.strftime('%Y-%m-%d') if chore.due_date else "N/A" }}
+        </p>
+      </div>
+    </div>
+  {% endfor %}
+{% endblock %}
