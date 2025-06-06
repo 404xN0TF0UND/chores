@@ -1,38 +1,44 @@
 import os
 import re
+import random
 from datetime import datetime, timedelta
 from dateutil import parser as date_parser
-from flask import request, current_app
+
+from flask import current_app
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
+
 from models import db, Chore, User, ChoreHistory
 
-INTENTS = ["add", "complete", "done", "list", "unassign", "help"]
-
-# --- Dusty's wit ---
-import random
-
+# -------------------------------
+# Dusty's Snark Arsenal
+# -------------------------------
 DUSTY_SNARK = [
     "Wow, you're actually doing a chore? I'm shocked.",
     "Another one bites the dust. Literally.",
     "Impressive. You’ve done something for once.",
     "If chores were trophies, you'd almost deserve one.",
-    "Keep this up and I’ll consider updating your résumé."
+    "Keep this up and I’ll consider updating your résumé.",
 ]
 
 HOLIDAY_SNARK = {
     "01-01": "New year, same dirty house. Chop chop!",
-    "12-25": "Even Santa makes his elves clean up.",
     "07-04": "Time to declare independence from laziness.",
+    "12-25": "Even Santa makes his elves clean up.",
 }
 
-# --- Dusty helper ---
+# -------------------------------
+# Response Utilities
+# -------------------------------
 def dusty_response(msg):
+    """Wraps message in Dusty's Twilio voice."""
     resp = MessagingResponse()
     resp.message(f"[Dusty 🤖] {msg}")
     return str(resp)
 
-# --- User utilities ---
+# -------------------------------
+# User Utilities
+# -------------------------------
 def get_user_by_phone(phone):
     return User.query.filter_by(phone=phone).first()
 
@@ -43,22 +49,19 @@ def seed_users_from_env():
     admin_names = os.getenv("ADMINS", "").split(",")
     for key, value in os.environ.items():
         if key.startswith("USER_"):
-            name = key[5:] # Strips USER_ prefix
+            name = key[5:]
             phone = value.strip()
-
-            # Validate phone format (basic check)
             if not phone.startswith("+"):
                 continue
-            # Check if user exists
-            existing_user = User.query.filter_by(phone=phone).first()
-            if not existing_user:
-                is_admin =name in admin_names
-                new_user = User(name=name, phone=phone, is_admin=is_admin)
-                
-                db.session.add(new_user)
+            existing = User.query.filter_by(phone=phone).first()
+            if not existing:
+                user = User(name=name, phone=phone, is_admin=(name in admin_names))
+                db.session.add(user)
     db.session.commit()
 
-# --- Chore utilities ---
+# -------------------------------
+# Chore Utilities
+# -------------------------------
 def get_assigned_chores(user_id):
     return Chore.query.filter_by(assigned_to_id=user_id, completed=False).order_by(Chore.due_date).all()
 
@@ -75,34 +78,29 @@ def get_upcoming_chores(user, days=3):
 def get_completed_chores(user):
     return Chore.query.filter_by(assigned_to_id=user.id, completed=True).all()
 
-def complete_chore_by_name(user_id, chore_name):
+def complete_chore_by_name(chore_name, user):
+    if not chore_name:
+        return None
     chore = Chore.query.filter(
-        Chore.assigned_to_id == user_id,
+        Chore.assigned_to_id == user.id,
         Chore.name.ilike(f"%{chore_name.strip()}%"),
         Chore.completed == False
     ).first()
+    if chore:
+        chore.completed = True
+        chore.completed_at = datetime.utcnow()
+        db.session.commit()
+        return chore
+    return None
 
-    if not chore:
-        return None
-
-    chore.completed = True
-    chore.completed_at = datetime.utcnow()
-    db.session.commit()
-    return chore
-
-def list_user_chores(user_id, limit=5):
-    chores = Chore.query.filter(
-        Chore.assigned_to_id == user_id,
-        Chore.completed == False
-    ).order_by(Chore.due_date.asc().nullslast()).limit(limit).all()
-
-    result = []
-    for chore in chores:
-        name = chore.name
-        due = chore.due_date.strftime('%Y-%m-%d') if chore.due_date else 'No due date'
-        result.append(f"{name} (Due: {due})")
-    
-    return result
+def list_user_chores(user, limit=5):
+    chores = Chore.query.filter_by(assigned_to_id=user.id, completed=False)\
+                .order_by(Chore.due_date.asc().nullslast())\
+                .limit(limit).all()
+    return [
+        f"{c.name} (Due: {c.due_date.strftime('%Y-%m-%d') if c.due_date else 'No due date'})"
+        for c in chores
+    ]
 
 def get_unassigned_chores():
     return Chore.query.filter_by(assigned_to_id=None).all()
@@ -122,77 +120,65 @@ def notify_admins(message, twilio_client, from_number):
             to=admin.phone
         )
 
-# --- Conversation & reminder utilities ---
+# -------------------------------
+# Conversation & Reminders
+# -------------------------------
 conversation_state = {}
 
 def clean_conversations(app):
+    """Remove stale conversation states after 2 hours."""
     with app.app_context():
         now = datetime.utcnow()
-        to_delete = [k for k, v in conversation_state.items() if now - v['timestamp'] > timedelta(hours=2)]
-        for key in to_delete:
-            del conversation_state[key]
+        expired = [k for k, v in conversation_state.items() if now - v['timestamp'] > timedelta(hours=2)]
+        for k in expired:
+            del conversation_state[k]
 
 def send_reminders(app):
+    """Send daily chore reminders."""
     with app.app_context():
         from chores_app import twilio_client
         from_number = os.getenv("TWILIO_NUMBER")
-        users = User.query.all()
-        now = datetime.now()
-        for user in users:
-            chores_due = Chore.query.filter(
+        today = datetime.now().date()
+
+        for user in User.query.all():
+            chores = Chore.query.filter(
                 Chore.assigned_to_id == user.id,
                 Chore.due_date != None,
                 Chore.completed == False,
-                Chore.due_date.date() == now.date()
+                Chore.due_date.date() == today
             ).all()
-            if chores_due:
-                message = f"Hey {user.name}, you have {len(chores_due)} chore(s) due today:\n"
-                for chore in chores_due:
-                    message += f"• {chore.name}\n"
-                twilio_client.messages.create(
-                    body=message,
-                    from_=from_number,
-                    to=user.phone
-                )
+            if chores:
+                message = f"Hey {user.name}, you have {len(chores)} chore(s) due today:\n"
+                message += "\n".join(f"• {c.name}" for c in chores)
+                twilio_client.messages.create(body=message, from_=from_number, to=user.phone)
 
-# --- SMS parsing ---
+# -------------------------------
+# SMS Parsing & NLP
+# -------------------------------
 def parse_natural_date(text):
     text = text.lower().strip()
-
-    if text in ['today']:
+    if text == "today":
         return datetime.today()
-    elif text in ['tomorrow']:
+    elif text == "tomorrow":
         return datetime.today() + timedelta(days=1)
-
-    # Handle "in X days"
-    match = re.match(r'in (\d+) days?', text)
-    if match:
-        days = int(match.group(1))
-        return datetime.today() + timedelta(days=days)
-
+    if match := re.match(r'in (\d+) days?', text):
+        return datetime.today() + timedelta(days=int(match.group(1)))
     try:
-        # Let dateutil try natural language (e.g., "next Friday")
         return date_parser.parse(text, fuzzy=True, default=datetime.today())
     except (ValueError, TypeError):
         return None
 
 def parse_sms(body):
-    text = body.strip().lower()
+    text = re.sub(r"\s+", " ", body.strip().lower())
     intent = None
     entities = {}
 
-    # Normalize whitespace
-    text = re.sub(r"\s+", " ", text)
-
-    # Detect 'done' or 'complete'
     if text.startswith("done") or text.startswith("complete"):
         intent = "complete"
         entities["chore_name"] = text.replace("done", "").replace("complete", "").strip()
 
     elif text.startswith("add"):
         intent = "add"
-        # Try to extract: name, assignee, due, recurrence
-        # e.g., "add vacuum to Ronnie due tomorrow every week"
         match = re.search(r"add (.*?) to (\w+)(?: due (.*?))?(?: every (\w+))?$", text)
         if match:
             entities["chore_name"] = match.group(1).strip()
@@ -201,7 +187,7 @@ def parse_sms(body):
             recurrence = match.group(4)
             if due_raw:
                 try:
-                    entities["due_date"] = date_parser(due_raw, fuzzy=True)
+                    entities["due_date"] = date_parser.parse(due_raw, fuzzy=True)
                 except:
                     entities["due_date"] = None
             if recurrence:
@@ -214,50 +200,43 @@ def parse_sms(body):
         intent = "unassign"
         entities["chore_name"] = text.replace("unassign", "").strip()
 
-    elif text == "help":
+    elif text in ["help"]:
         intent = "help"
 
     elif text in ["hi", "hello", "hey"]:
         intent = "greeting"
 
-    else:
-        # Fallback: try inferring "done chore"
-        if "done" in text:
-            intent = "complete"
-            entities["chore_name"] = text.split("done", 1)[1].strip()
+    elif "done" in text:
+        intent = "complete"
+        entities["chore_name"] = text.split("done", 1)[1].strip()
 
     return intent, entities
 
-# --- Recurrence parser ---
 def parse_recurrence(text):
     text = text.lower()
-    if 'daily' in text:
-        return 'daily'
-    elif 'weekly' in text:
-        return 'weekly'
-    elif 'monthly' in text:
-        return 'monthly'
-    elif match := re.search(r'every (\d+)', text):
+    if "daily" in text:
+        return "daily"
+    elif "weekly" in text:
+        return "weekly"
+    elif "monthly" in text:
+        return "monthly"
+    elif match := re.search(r"every (\d+)", text):
         return f"every {match.group(1)}"
     return None
 
-# -------SMS ------
+# -------------------------------
+# SMS Send Utility
+# -------------------------------
 def send_sms(to, body):
     account_sid = os.getenv("TWILIO_ACCOUNT_SID")
     auth_token = os.getenv("TWILIO_AUTH_TOKEN")
     from_number = os.getenv("TWILIO_PHONE_NUMBER")
-
     if not all([account_sid, auth_token, from_number]):
-        print("Missing Twilio configuration in environment variables.")
+        print("Missing Twilio configuration.")
         return
-
     try:
         client = Client(account_sid, auth_token)
-        message = client.messages.create(
-            body=body,
-            from_=from_number,
-            to=to
-        )
+        client.messages.create(body=body, from_=from_number, to=to)
         print(f"Sent SMS to {to}: {body}")
     except Exception as e:
         print(f"Failed to send SMS to {to}: {e}")
