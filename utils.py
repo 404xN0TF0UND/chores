@@ -36,6 +36,23 @@ def dusty_response(msg):
     resp.message(f"[Dusty 🤖] {msg}")
     return str(resp)
 
+
+def get_intent(message):
+    text = message.lower().strip()
+
+    if any(kw in text for kw in ['add', 'assign', 'give']):
+        return 'add'
+    if any(kw in text for kw in ['done', 'complete', 'finished']):
+        return 'complete'
+    if 'list' in text or 'what are my chores' in text:
+        return 'list'
+    if 'unassign' in text:
+        return 'unassign'
+    if text in ['hi', 'hello', 'hey', 'yo']:
+        return 'greeting'
+    if 'help' in text:
+        return 'help'
+    return 'unknown'
 # -------------------------------
 # User Utilities
 # -------------------------------
@@ -151,6 +168,47 @@ def send_reminders(app):
                 message = f"Hey {user.name}, you have {len(chores)} chore(s) due today:\n"
                 message += "\n".join(f"• {c.name}" for c in chores)
                 twilio_client.messages.create(body=message, from_=from_number, to=user.phone)
+
+def update_conversation_state(phone, intent, entities, expected_fields=None):
+    conversation_state[phone] = {
+        "intent": intent,
+        "entities": entities,
+        "timestamp": datetime.utcnow(),
+        "missing": expected_fields or [],
+    }
+
+def continue_conversation(phone, message):
+    state = conversation_state.get(phone)
+    if not state:
+        return None, None, None
+
+    entities = state['entities']
+    missing = state['missing']
+    intent = state['intent']
+
+    # Simple slot filling
+    if intent == "add":
+        if "chore_name" not in entities and "chore" in message.lower():
+            entities["chore_name"] = message.strip()
+            missing = [f for f in missing if f != "chore_name"]
+        elif "assignee" not in entities:
+            possible_user = get_user_by_name(message)
+            if possible_user:
+                entities["assignee"] = possible_user.name
+                missing = [f for f in missing if f != "assignee"]
+        elif "due_date" not in entities:
+            parsed = parse_natural_date(message)
+            if parsed:
+                entities["due_date"] = parsed
+                missing = [f for f in missing if f != "due_date"]
+
+    # Save updated state
+    conversation_state[phone]["entities"] = entities
+    conversation_state[phone]["missing"] = missing
+
+    return intent, entities, missing
+
+
 
 # -------------------------------
 # SMS Parsing & NLP
