@@ -1,28 +1,31 @@
 from apscheduler.schedulers.background import BackgroundScheduler
-from utils import send_reminders, clean_conversations
+from datetime import datetime
+from utils import dusty_response, get_due_chores_message
+from models import db, Chore
+from sqlalchemy import and_
 
-def start_scheduler(app):
-    scheduler_instance = BackgroundScheduler()
+send_sms = None  # Placeholder to be set by app.py
 
-    # Job: Send SMS reminders daily at 9:00 AM
-    scheduler_instance.add_job(
-        func=lambda: send_reminders(app),
-        trigger='cron',
-        hour=9,
-        minute=0,
-        id='daily_reminders'
-    )
 
-    # Job: Clean up old conversation states every hour
-    scheduler_instance.add_job(
-        func=lambda: clean_conversations(app),
-        trigger='cron',
-        minute=0,
-        id='conversation_cleanup'
-    )
+def set_send_sms_function(fn):
+    global send_sms
+    send_sms = fn
 
-    scheduler_instance.start()
-    print("Scheduler started with daily reminders and hourly cleanup.")
 
-# This is what you import in chores_app.py:
-# from scheduler import start_scheduler
+def job_check_due_chores():
+    now = datetime.utcnow()
+    due_chores = Chore.query.filter(
+        and_(Chore.completed == False, Chore.due_date <= now)
+    ).all()
+
+    for chore in due_chores:
+        if chore.assigned_to and chore.assigned_to.phone:
+            message = get_due_chores_message(chore.assigned_to.name, chore.task)
+            response = dusty_response("reminder", name=chore.assigned_to.name, message=message)
+            send_sms(chore.assigned_to.phone, response)
+
+
+def start_scheduler():
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(func=job_check_due_chores, trigger="interval", hours=1)
+    scheduler.start()

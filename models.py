@@ -5,7 +5,7 @@ db = SQLAlchemy()
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), nullable=False)
+    name = db.Column(db.String(50), nullable=False)
     phone = db.Column(db.String(20), unique=True, nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
 
@@ -17,21 +17,21 @@ class User(db.Model):
 
 class Chore(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
     assigned_to_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    due_date = db.Column(db.DateTime, nullable=True)
+    due_date = db.Column(db.Date, nullable=True)
+    recurrence = db.Column(db.String(20), nullable=True)  # e.g. 'daily', 'weekly', etc.
     completed = db.Column(db.Boolean, default=False)
-    recurrence = db.Column(db.String(20), nullable=True)
-    completed_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):
         return f"<Chore {self.name}>"
 
 class ChoreHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    chore_name = db.Column(db.String(120), nullable=False)
-    completed_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    chore_name = db.Column(db.String(100), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     completed_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):
-        return f"<History {self.chore_name} by {self.user.name}>"
+        return f"<ChoreHistory {self.chore_name} by {self.user.name}>"

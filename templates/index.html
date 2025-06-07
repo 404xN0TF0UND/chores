@@ -9,7 +9,7 @@
                     <h5 class="card-title">{{ chore.name }}</h5>
                     <p class="card-text">
                         Assigned to: <strong>{{ chore.assigned_to.name }}</strong><br>
-                        Due: {{ chore.due_date.strftime('%Y-%m-%d') }}<br>
+                        Due: {{ chore.due_date.strftime('%Y-%m-%d') if chore.due_date else 'anytime' }}<br>
                         {% if chore.recurrence %}
                             Repeats: {{ chore.recurrence }}
                         {% endif %}
