@@ -122,6 +122,11 @@ def handle_sms():
     intent, entities = parse_sms_nlp(incoming_msg)
     print(f"[INTENT] {intent} | [ENTITIES] {entities}")
 
+    chore_name = entities.get("chore")
+    assignee_name = entities.get("assignee")
+    due_date = entities.get("due_date")
+    recurrence = entities.get("recurrence")
+    
     if intent == "greeting":
         return _twiml(dusty_response("greetings", name=user.name))
 
