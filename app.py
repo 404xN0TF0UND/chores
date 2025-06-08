@@ -196,7 +196,7 @@ def handle_sms():
 
         chore = Chore.query.filter(
             Chore.name.ilike(f"%{chore_name}%"),
-            Chore.assigned_to_id == None,
+            Chore.assigned_to_id == user.id,
             Chore.completed == False
         ).first()
 

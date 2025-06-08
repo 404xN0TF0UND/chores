@@ -517,7 +517,7 @@ def get_upcoming_chores(user, days=3):
 
 
 def list_user_chores(user, limit=5):
-    chores = Chore.query.filter_by(assigned_to_id=user, completed=False)\
+    chores = Chore.query.filter_by(assigned_to_id=user.id, completed=False)\
                 .order_by(Chore.due_date.asc().nullslast())\
                 .limit(limit).all()
     print(f"[DEBUG] Inside list_user_chores: Found {chores}")
