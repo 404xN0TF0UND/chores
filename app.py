@@ -9,7 +9,7 @@ from models import db, User, Chore, ChoreHistory
 from sqlalchemy.orm import joinedload
 from scheduler import start_scheduler
 from utils import (
-    seed_users_from_env, get_user_by_phone, get_user_by_name, parse_sms,
+    seed_users_from_env, get_user_by_phone, get_user_by_name,
     dusty_response, get_assigned_chores, get_completed_chores,
     get_unassigned_chores, get_chore_history, complete_chore_by_name,
     notify_admins, get_upcoming_chores, list_user_chores,
@@ -159,7 +159,7 @@ def handle_sms():
         return _twiml(dusty_response("done", name=user.name, chore=chore.name))
 
     elif intent == "add":
-        parsed = parse_sms(incoming_msg)
+        parsed = parse_sms_nlp(incoming_msg)
         if not parsed:
             return _twiml(dusty_response("add_invalid"))
         chore_name, assignee_name, due_date, recurrence = parsed

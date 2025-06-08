@@ -4,7 +4,7 @@ import re
 import random
 import dateparser
 from datetime import datetime, timedelta, date
-from dateutil.parser import parse, ParserError
+# from dateutil.parser import parse, ParserError
 # from dateutil import parser as date_parser
 from typing import Tuple
 from models import Chore, User, ChoreHistory, db
@@ -331,53 +331,53 @@ def parse_natural_date(text: str) -> datetime | None:
 
 
 
-def parse_sms(message):
-    print(f"[NLP DEBUG] Parsing: {message}")
+# def parse_sms(message):
+#     print(f"[NLP DEBUG] Parsing: {message}")
 
-    message = message.lower().strip()
+#     message = message.lower().strip()
 
-    # Normalize some synonyms
-    message = message.replace("assign", "add").replace("for", "to").replace("on", "due")
+#     # Normalize some synonyms
+#     message = message.replace("assign", "add").replace("for", "to").replace("on", "due")
 
-    if not message.startswith("add "):
-        print("[NLP DEBUG] Not an ADD command")
-        return None
+#     if not message.startswith("add "):
+#         print("[NLP DEBUG] Not an ADD command")
+#         return None
 
-    # Token-based heuristics
-    parts = message[4:].split(" due ")
+#     # Token-based heuristics
+#     parts = message[4:].split(" due ")
 
-    if len(parts) < 2:
-        print("[NLP DEBUG] Missing due date phrase")
-        return None
+#     if len(parts) < 2:
+#         print("[NLP DEBUG] Missing due date phrase")
+#         return None
 
-    before_due, after_due = parts
-    chore_part = before_due.strip()  # e.g. 'vacuum to Becky'
+#     before_due, after_due = parts
+#     chore_part = before_due.strip()  # e.g. 'vacuum to Becky'
 
-    if " to " not in chore_part:
-        print("[NLP DEBUG] Missing 'to' to identify assignee")
-        return None
+#     if " to " not in chore_part:
+#         print("[NLP DEBUG] Missing 'to' to identify assignee")
+#         return None
 
-    chore_name, assignee_name = chore_part.split(" to ", 1)
-    chore_name = chore_name.strip()
-    assignee_name = assignee_name.strip()
+#     chore_name, assignee_name = chore_part.split(" to ", 1)
+#     chore_name = chore_name.strip()
+#     assignee_name = assignee_name.strip()
 
-    # Handle recurrence if present
-    recurrence = None
-    if " every " in after_due:
-        due_text, recurrence_text = after_due.split(" every ", 1)
-        recurrence = recurrence_text.strip()
-    else:
-        due_text = after_due.strip()
+#     # Handle recurrence if present
+#     recurrence = None
+#     if " every " in after_due:
+#         due_text, recurrence_text = after_due.split(" every ", 1)
+#         recurrence = recurrence_text.strip()
+#     else:
+#         due_text = after_due.strip()
 
-    # Parse due date naturally
-    try:
-        due_date = dateparser.parse(due_text, fuzzy=True).date()
-    except Exception as e:
-        print(f"[NLP DEBUG] Failed to parse due date: {e}")
-        return None
+#     # Parse due date naturally
+#     try:
+#         due_date = dateparser.parse(due_date_str)
+#     except Exception as e:
+#         print(f"[NLP DEBUG] Failed to parse due date: {e}")
+#         return None
 
-    print(f"[NLP DEBUG] Extracted chore='{chore_name}', assignee='{assignee_name}', due='{due_date}', recurrence='{recurrence}'")
-    return chore_name, assignee_name, due_date, recurrence
+#     print(f"[NLP DEBUG] Extracted chore='{chore_name}', assignee='{assignee_name}', due='{due_date}', recurrence='{recurrence}'")
+#     return chore_name, assignee_name, due_date, recurrence
 
 def parse_sms_nlp(message: str) -> Tuple[str, dict]:
     """
