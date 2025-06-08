@@ -13,7 +13,7 @@ from utils import (
     dusty_response, get_assigned_chores, get_completed_chores,
     get_unassigned_chores, get_chore_history, complete_chore_by_name,
     notify_admins, get_upcoming_chores, list_user_chores,
-    parse_natural_date, get_intent
+    parse_natural_date, get_intent,parse_sms_nlp
 )
 print("[BOOT] Flask is starting up")
 load_dotenv()
@@ -119,7 +119,7 @@ def handle_sms():
     if not user:
         return _twiml(dusty_response("unrecognized_user"))
 
-    intent, entities = get_intent(incoming_msg)
+    intent, entities = parse_sms_nlp(incoming_msg)
     print(f"[INTENT] {intent} | [ENTITIES] {entities}")
 
     if intent == "greeting":

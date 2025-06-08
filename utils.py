@@ -4,8 +4,8 @@ import re
 import random
 import dateparser
 from datetime import datetime, timedelta, date
-from dateutil.parser import parser as parse_date, ParserError
-from dateutil import parser as date_parser
+from dateutil.parser import parse, ParserError
+# from dateutil import parser as date_parser
 from typing import Tuple
 from models import Chore, User, ChoreHistory, db
 from sqlalchemy.orm import joinedload
@@ -268,45 +268,45 @@ def get_user_by_phone(phone) :
 # -------------------------------
 # This function is used to parse the incoming SMS message and determine the intent.
 
-def get_intent(message: str) -> Tuple[str, dict]:
-    """Determine user intent and extract entities from a natural SMS."""
-    message = message.lower().strip()
-    entities = {}
+# def get_intent(message: str) -> Tuple[str, dict]:
+#     """Determine user intent and extract entities from a natural SMS."""
+#     message = message.lower().strip()
+#     entities = {}
 
-    # Shortcut commands
-    if message in ["list", "my chores"]:
-        return "list", {}
-    if message in ["help", "commands"]:
-        return "help", {}
-    if message in ["hello", "hi", "hey", "greetings"]:
-        return "greeting", {}
+#     # Shortcut commands
+#     if message in ["list", "my chores"]:
+#         return "list", {}
+#     if message in ["help", "commands"]:
+#         return "help", {}
+#     if message in ["hello", "hi", "hey", "greetings"]:
+#         return "greeting", {}
     
-    # DONE intent
-    if message.startswith("done"):
-        match = re.match(r"done\s+(.*)", message)
-        if match:
-            entities["chore"] = match.group(1).strip()
-            return "done", entities
+#     # DONE intent
+#     if message.startswith("done"):
+#         match = re.match(r"done\s+(.*)", message)
+#         if match:
+#             entities["chore"] = match.group(1).strip()
+#             return "done", entities
 
-    # CLAIM intent
-    if message.startswith("claim"):
-        match = re.match(r"claim\s+(.*)", message)
-        if match:
-            entities["chore"] = match.group(1).strip()
-            return "claim", entities
+#     # CLAIM intent
+#     if message.startswith("claim"):
+#         match = re.match(r"claim\s+(.*)", message)
+#         if match:
+#             entities["chore"] = match.group(1).strip()
+#             return "claim", entities
 
-    # ADD intent
-    add_match = re.match(r"(add|assign)\s+(.*?)\s+to\s+(\w+)\s+due\s+(.*)", message)
-    if add_match:
-        _, chore_name, assignee, due_str = add_match.groups()
-        entities["chore"] = chore_name.strip()
-        entities["assignee"] = assignee.strip()
-        due_date = dateparser.parse(due_str)
-        if due_date:
-            entities["due_date"] = due_date.date()
-        return "add", entities
+#     # ADD intent
+#     add_match = re.match(r"(add|assign)\s+(.*?)\s+to\s+(\w+)\s+due\s+(.*)", message)
+#     if add_match:
+#         _, chore_name, assignee, due_str = add_match.groups()
+#         entities["chore"] = chore_name.strip()
+#         entities["assignee"] = assignee.strip()
+#         due_date = dateparser.parse(due_str)
+#         if due_date:
+#             entities["due_date"] = due_date.date()
+#         return "add", entities
 
-    return "unknown", {}
+#     return "unknown", {}
 
 def parse_natural_date(text: str) -> datetime | None:
     if not text:
@@ -379,7 +379,87 @@ def parse_sms(message):
     print(f"[NLP DEBUG] Extracted chore='{chore_name}', assignee='{assignee_name}', due='{due_date}', recurrence='{recurrence}'")
     return chore_name, assignee_name, due_date, recurrence
 
-    
+def parse_sms_nlp(message: str) -> Tuple[str, dict]:
+    """
+    Parses the SMS message to determine intent and extract entities.
+    Supports natural phrasing for add, done, list, claim, and help.
+    Returns: (intent: str, entities: dict)
+    """
+    message_lower = message.strip().lower()
+    entities = {}
+
+    print(f"[NLP DEBUG] Parsing: {message}")
+
+    # -------------------------------
+    # 1. Help / Greeting / List
+    # -------------------------------
+    if any(word in message_lower for word in ['help', 'commands', 'what can you do']):
+        return "help", {}
+
+    if any(word in message_lower for word in ['hi', 'hello', 'greetings']):
+        return "greeting", {}
+
+    if message_lower.startswith("list"):
+        return "list", {}
+
+    # -------------------------------
+    # 2. Done Intent
+    # -------------------------------
+    if message_lower.startswith("done"):
+        chore = message_lower.replace("done", "").strip()
+        if chore:
+            entities["chore"] = chore
+            return "done", entities
+        else:
+            return "done_invalid", {}
+
+    # -------------------------------
+    # 3. Claim Intent
+    # -------------------------------
+    if message_lower.startswith("claim"):
+        chore = message_lower.replace("claim", "").strip()
+        if chore:
+            entities["chore"] = chore
+            return "claim", entities
+        else:
+            return "claim_invalid", {}
+
+    # -------------------------------
+    # 4. Add Intent
+    # -------------------------------
+    if message_lower.startswith("add"):
+        # Example: "Add dishes to Becky due Friday"
+        pattern = r"add (.+?) to ([\w\s]+?) due (.+)"
+        match = re.match(pattern, message_lower)
+
+        if match:
+            chore = match.group(1).strip()
+            assignee = match.group(2).strip()
+            due_str = match.group(3).strip()
+
+            entities["chore"] = chore
+            entities["assignee"] = assignee
+
+            try:
+                parsed_date = dateparser.parse(due_str)
+                if parsed_date:
+                    entities["due_date"] = parsed_date.date()
+                else:
+                    print(f"[NLP DEBUG] Failed to parse due date: '{due_str}' → None")
+                    return "add_invalid", {}
+            except Exception as e:
+                print(f"[NLP DEBUG] Exception during date parsing: {e}")
+                return "add_invalid", {}
+
+            return "add", entities
+        else:
+            print("[NLP DEBUG] Add intent pattern did not match.")
+            return "add_invalid", {}
+
+    # -------------------------------
+    # 5. Fallback
+    # -------------------------------
+    return "unknown", {}   
 # -------------------------------
 # Chore Utilities
 # -------------------------------
