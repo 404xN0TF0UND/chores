@@ -85,16 +85,17 @@ def add_chore():
     if request.method == 'POST':
         name = request.form['name']
         assigned_to_id = request.form.get('assigned_to') or None
-        # assigned_to = User.query.get(assigned_to_id) if assigned_to_id else None
+        assigned_to = User.query.get(assigned_to_id) if assigned_to_id else None
         due_date = request.form.get('due_date')
         recurrence = request.form.get('recurrence')
 
         new_chore = Chore(
             name=name,
-            assigned_to_id=assigned_to_id,
+            assigned_to=assigned_to,
             due_date=datetime.strptime(due_date, '%Y-%m-%d') if due_date else None,
             recurrence=recurrence
         )
+        print(f"[DEBUG] Added chore: {new_chore.name} | Assigned to: {assigned_to.name if assigned_to else 'None'} | Due: {new_chore.due_date} | Recurrence: {recurrence}")
         db.session.add(new_chore)
         db.session.commit()
 
@@ -107,11 +108,11 @@ def add_chore():
 
 
 @app.route("/sms", methods=["POST"])
+
 def handle_sms():
     print("[SMS ROUTE] Hit /sms endpoint")
     incoming_msg = request.values.get("Body", "").strip()
     from_number = request.values.get("From", "")
-
     print(f"[SMS RECEIVED] From: {from_number} | Message: '{incoming_msg}'")
 
     user = get_user_by_phone(from_number)
@@ -139,7 +140,6 @@ def handle_sms():
             response = dusty_response("list", name=user.name)
             return _twiml(f"{response}\n{chores_text}")
         else:
-            # Show unassigned chores if none are assigned to user
             unassigned = Chore.query.filter_by(assigned_to_id=None, completed=False).limit(5).all()
             if not unassigned:
                 return _twiml(dusty_response("unassigned"))
@@ -150,47 +150,39 @@ def handle_sms():
         chore_name = entities.get("chore")
         if not chore_name:
             return _twiml(dusty_response("unknown"))
-        chore = (
-            Chore.query.filter_by(name=chore_name, assigned_to_id=user.id, completed=False).first()
-        )
+        chore = Chore.query.filter_by(name=chore_name, assigned_to_id=user.id, completed=False).first()
         if not chore:
             return _twiml(dusty_response("unknown"))
         chore.completed = True
         chore.completed_at = datetime.utcnow()
         db.session.commit()
-        return _twiml(dusty_response("done"))
+        return _twiml(dusty_response("done", name=user.name, chore=chore.name))
 
     elif intent == "add":
         parsed = parse_sms(incoming_msg)
         if not parsed:
-            return _twiml(dusty_response("add_invalid"))    # invalid format
-        
+            return _twiml(dusty_response("add_invalid"))
         chore_name, assignee_name, due_date, recurrence = parsed
         assignee = get_user_by_name(assignee_name)
-
         if not assignee:
             return _twiml(dusty_response("unrecognized_user"))
-        
         chore = Chore(name=chore_name, assigned_to=assignee, due_date=due_date, recurrence=recurrence)
         db.session.add(chore)
         db.session.commit()
-
-        return _twiml(dusty_response("add"))  # plug in real add logic
+        return _twiml(dusty_response("add", name=assignee.name, chore=chore_name))
 
     elif intent == "claim":
         chore_name = entities.get("chore")
-        chore = (
-            Chore.query.filter_by(name=chore_name, assigned_to_id=None, completed=False).first()
-            if chore_name else None
-        )
+        if not chore_name:
+            return _twiml(dusty_response("unknown"))
+        chore = Chore.query.filter_by(name=chore_name, assigned_to_id=None, completed=False).first()
         if not chore:
             return _twiml(dusty_response("unassigned"))
         chore.assigned_to_id = user.id
         db.session.commit()
-        return _twiml(dusty_response("claim", name=user.name))
+        return _twiml(dusty_response("claim", name=user.name, chore=chore.name))
 
     return _twiml(dusty_response("unknown"))
-
 
 
 def _twiml(text):
