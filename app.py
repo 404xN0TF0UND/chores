@@ -175,7 +175,11 @@ def handle_sms():
         chore_name = entities.get("chore")
         if not chore_name:
             return _twiml(dusty_response("unknown"))
-        chore = Chore.query.filter_by(name=chore_name, assigned_to_id=None, completed=False).first()
+        chore = Chore.query.filter(
+            Chore.name.ilike(chore_name),
+            Chore.assigned_to_id.is_(None),
+            Chore.completed.is_(False)
+        ).first()
         if not chore:
             return _twiml(dusty_response("unassigned"))
         chore.assigned_to_id = user.id
