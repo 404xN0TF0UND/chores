@@ -65,7 +65,7 @@ def complete_chore(chore_id):
     db.session.commit()
 
     # Notify admins
-    notify_admins(f"Chore '{chore.name}' marked as complete by {chore.assigned_to.name if chore.assigned_to else 'an unknown user'}.", twilio_client, TWILIO_PHONE_NUMBER)
+    notify_admins(f"Chore '{chore.name}' marked as complete by {chore.assigned_to.name if chore.assigned_to else 'an unknown user'}.")
     flash('Chore marked as complete!')
     return redirect(url_for('index'))
 
