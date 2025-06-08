@@ -160,34 +160,42 @@ def seasonal_greeting() -> str | None:
     md = today.strftime("%m-%d")
     return HOLIDAY_SNARK.get(md)
 
-def dusty_response(template_key_or_text, name=None, extra=None, include_seasonal=True) -> str:
-    """ Get a Dusty-style witty response from a category or literal string. """
+def dusty_response(template_key_or_text, include_seasonal=True, **kwargs) -> str:
+    """
+    Generate a Dusty-style response from a category key or literal string.
+
+    Args:
+        template_key_or_text (str): Key in DUSTY_RESPONSES or raw response.
+        include_seasonal (bool): Include seasonal message if available.
+        **kwargs: Variables to inject (e.g., name, chore).
+    """
     print(f"[DEBUG] Dusty called with: {template_key_or_text}")
-    
     message = None
+
     if template_key_or_text in DUSTY_RESPONSES:
         print("[DEBUG] Using category response")
         message = random.choice(DUSTY_RESPONSES[template_key_or_text])
-    elif isinstance(template_key_or_text, str) and template_key_or_text.strip():
-        message = template_key_or_text
     else:
-        message = random.choice(DUSTY_RESPONSES["unknown"])  # safety net
+        message = template_key_or_text
 
-    if name:
-        message = message.replace("{name}", name)
+    try:
+        formatted = message.format(**kwargs)
+    except KeyError as e:
+        print(f"[WARNING] Missing format key in Dusty response: {e}")
+        formatted = message  # fallback to raw if formatting fails
 
-    # Occasionally roast the user
-    if random.random() < 0.15:
-        snark = random.choice(DUSTY_SNARK)
-        message += f" {snark}"
-
-    # Add holiday snark if applicable
+    # Add seasonal snark occasionally
     if include_seasonal:
-        holiday_msg = seasonal_greeting()
-        if holiday_msg:
-            message += f" {holiday_msg}"
+        holiday = seasonal_greeting()
+        if holiday and random.random() < 0.5:
+            formatted += f" 🎉 {holiday}"
 
-    return f"[Dusty 🤖] {message}"
+    # 15% chance to add snark
+    if random.random() < 0.15:
+        roast = random.choice(DUSTY_SNARK)
+        formatted += f" 💥 {roast}"
+
+    return f"[Dusty 🤖] {formatted}"
 
 def get_due_chores_message(session) -> str:
     """
