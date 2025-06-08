@@ -118,7 +118,7 @@ def handle_sms():
 
     user = get_user_by_phone(from_number)
     if not user:
-        return dusty_response("unauthorized"), 200
+        return _twiml(dusty_response("unauthorized"))
 
     # NLP intent + entity parsing
     intent, entities = parse_sms_nlp(incoming_msg)
@@ -131,11 +131,11 @@ def handle_sms():
         recurrence = entities.get("recurrence")
 
         if not all([chore_name, assignee_name]):
-            return _twiml(dusty_response("add_invalid"), 200)
+            return _twiml(dusty_response("add_invalid"))
 
         assignee = get_user_by_name(assignee_name)
         if not assignee:
-            return _twiml(dusty_response("unknown_user", extra=assignee_name), 200)
+            return _twiml(dusty_response("unknown_user", extra=assignee_name))
 
         new_chore = Chore(
             name=chore_name,
@@ -146,12 +146,12 @@ def handle_sms():
         db.session.add(new_chore)
         db.session.commit()
 
-        return _twiml(dusty_response("add", extra=f"{chore_name} assigned to {assignee.name}"), 200)
+        return _twiml(dusty_response("add", extra=f"{chore_name} assigned to {assignee.name}"))
 
     elif intent == "done":
         chore_name = entities.get("chore")
         if not chore_name:
-            return _twiml(dusty_response("done_invalid"), 200)
+            return _twiml(dusty_response("done_invalid"))
 
         chore = Chore.query.filter(
             Chore.name.ilike(f"%{chore_name}%"),
@@ -160,14 +160,14 @@ def handle_sms():
         ).first()
 
         if not chore:
-            return _twiml(dusty_response("not_found", extra=chore_name), 200)
+            return _twiml(dusty_response("not_found", extra=chore_name))
 
         chore.completed = True
         chore.completed_at = datetime.utcnow()
         db.session.commit()
 
         notify_admins(chore, user)
-        return _twiml(dusty_response("done", extra=chore.name), 200)
+        return _twiml(dusty_response("done", extra=chore.name))
 
     elif intent == "list":
         chores = list_user_chores(user)
@@ -176,7 +176,7 @@ def handle_sms():
                 f"- {c.name} (due {c.due_date.strftime('%Y-%m-%d') if c.due_date else 'no due date'})"
                 for c in chores
             ])
-            return _twiml(dusty_response("list", extra=reply), 200)
+            return _twiml(dusty_response("list", extra=reply))
         else:
             # No assigned chores, suggest unassigned
             unassigned = Chore.query.filter_by(assigned_to_id=None, completed=False).limit(5).all()
@@ -185,14 +185,14 @@ def handle_sms():
                     f"- {c.name} (due {c.due_date.strftime('%Y-%m-%d') if c.due_date else 'no due date'})"
                     for c in unassigned
                 ])
-                return _twiml(dusty_response("no_chores", extra=reply), 200)
+                return _twiml(dusty_response("no_chores", extra=reply))
             else:
-                return _twiml(dusty_response("nothing_to_do"), 200)
+                return _twiml(dusty_response("nothing_to_do"))
 
     elif intent == "claim":
         chore_name = entities.get("chore")
         if not chore_name:
-            return _twiml(dusty_response("claim_invalid"), 200)
+            return _twiml(dusty_response("claim_invalid"))
 
         chore = Chore.query.filter(
             Chore.name.ilike(f"%{chore_name}%"),
@@ -201,15 +201,15 @@ def handle_sms():
         ).first()
 
         if not chore:
-            return _twiml(dusty_response("not_found_unassigned", extra=chore_name), 200)
+            return _twiml(dusty_response("not_found_unassigned", extra=chore_name))
 
         chore.assigned_to_id = user.id
         db.session.commit()
 
-        return _twiml(dusty_response("claim", extra=chore.name), 200)
+        return _twiml(dusty_response("claim", extra=chore.name))
 
     # Unknown or unsupported intent
-    return _twiml(dusty_response("unknown"), 200)
+    return _twiml(dusty_response("unknown"))
     
 
 
