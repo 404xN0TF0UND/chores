@@ -6,15 +6,16 @@ from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 from datetime import datetime
 from models import db, User, Chore, ChoreHistory
+from sqlalchemy.orm import joinedload
 from scheduler import start_scheduler
 from utils import (
-    seed_users_from_env, get_user_by_phone, parse_sms,
+    seed_users_from_env, get_user_by_phone, get_user_by_name, parse_sms,
     dusty_response, get_assigned_chores, get_completed_chores,
     get_unassigned_chores, get_chore_history, complete_chore_by_name,
     notify_admins, get_upcoming_chores, list_user_chores,
-    parse_natural_date
+    parse_natural_date, get_intent
 )
-
+print("[BOOT] Flask is starting up")
 load_dotenv()
 
 app = Flask(__name__)
@@ -84,6 +85,7 @@ def add_chore():
     if request.method == 'POST':
         name = request.form['name']
         assigned_to_id = request.form.get('assigned_to') or None
+        # assigned_to = User.query.get(assigned_to_id) if assigned_to_id else None
         due_date = request.form.get('due_date')
         recurrence = request.form.get('recurrence')
 
@@ -103,88 +105,100 @@ def add_chore():
         return redirect(url_for('index'))
     return render_template('add_chore.html', users=users)
 
-@app.route('/sms', methods=["POST"])
-def handle_sms():
-    incoming_msg = request.values.get('Body', '').strip()
-    from_number = request.values.get('From', '').strip()
 
-    print(f"[SMS] From: {from_number}, Message: {incoming_msg}")
+@app.route("/sms", methods=["POST"])
+def handle_sms():
+    print("[SMS ROUTE] Hit /sms endpoint")
+    incoming_msg = request.values.get("Body", "").strip()
+    from_number = request.values.get("From", "")
+
+    print(f"[SMS RECEIVED] From: {from_number} | Message: '{incoming_msg}'")
 
     user = get_user_by_phone(from_number)
     if not user:
-        return dusty_response("unrecognized_user")
+        return _twiml(dusty_response("unrecognized_user"))
 
-    intent, entities = parse_sms(incoming_msg)
-    print(f"[PARSER] Intent: {intent}, Entities: {entities}")
+    intent, entities = get_intent(incoming_msg)
+    print(f"[INTENT] {intent} | [ENTITIES] {entities}")
 
-    # --- ADD CHORE ---
-    if intent == 'add':
-        chore_name = entities.get('chore_name')
-        if not chore_name:
-            return dusty_response("You're trying to add... something. Care to specify what?")
+    if intent == "greeting":
+        return _twiml(dusty_response("greetings", name=user.name))
 
-        assignee_name = entities.get('assignee') or user.name
-        assignee = User.query.filter(User.name.ilike(assignee_name)).first()
-        if not assignee:
-            return dusty_response(f"Nice try, but I don't know who '{assignee_name}' is.")
+    elif intent == "help":
+        return _twiml(dusty_response("help"))
 
-        due_date = parse_natural_date(entities.get('due_date'))
-        recurrence = entities.get('recurrence')
-
-        new_chore = Chore(
-            name=chore_name,
-            assigned_to=assignee,
-            due_date=due_date,
-            recurrence=recurrence
+    elif intent == "list":
+        chores = (
+            Chore.query.options(joinedload(Chore.assigned_to))
+            .filter_by(assigned_to_id=user.id, completed=False)
+            .limit(5)
+            .all()
         )
-        db.session.add(new_chore)
+        if chores:
+            chores_text = "\n".join([f"• {chore.name} (due {chore.due_date})" for chore in chores])
+            response = dusty_response("list", name=user.name)
+            return _twiml(f"{response}\n{chores_text}")
+        else:
+            # Show unassigned chores if none are assigned to user
+            unassigned = Chore.query.filter_by(assigned_to_id=None, completed=False).limit(5).all()
+            if not unassigned:
+                return _twiml(dusty_response("unassigned"))
+            options = "\n".join([f"• {chore.name}" for chore in unassigned])
+            return _twiml(f"[Dusty 🤖] You have no chores. But here are some unclaimed tasks:\n{options}")
+
+    elif intent == "done":
+        chore_name = entities.get("chore")
+        if not chore_name:
+            return _twiml(dusty_response("unknown"))
+        chore = (
+            Chore.query.filter_by(name=chore_name, assigned_to_id=user.id, completed=False).first()
+        )
+        if not chore:
+            return _twiml(dusty_response("unknown"))
+        chore.completed = True
+        chore.completed_at = datetime.utcnow()
+        db.session.commit()
+        return _twiml(dusty_response("done"))
+
+    elif intent == "add":
+        parsed = parse_sms(incoming_msg)
+        if not parsed:
+            return _twiml(dusty_response("add_invalid"))    # invalid format
+        
+        chore_name, assignee_name, due_date, recurrence = parsed
+        assignee = get_user_by_name(assignee_name)
+
+        if not assignee:
+            return _twiml(dusty_response("unrecognized_user"))
+        
+        chore = Chore(name=chore_name, assigned_to=assignee, due_date=due_date, recurrence=recurrence)
+        db.session.add(chore)
         db.session.commit()
 
-        notify_admins(
-            f"{user.name} added chore \"{chore_name}\" assigned to {assignee.name} (due: {due_date.strftime('%Y-%m-%d') if due_date else 'anytime'}).",
-            
+        return _twiml(dusty_response("add"))  # plug in real add logic
+
+    elif intent == "claim":
+        chore_name = entities.get("chore")
+        chore = (
+            Chore.query.filter_by(name=chore_name, assigned_to_id=None, completed=False).first()
+            if chore_name else None
         )
-        print("[DEBUG] Returning success response for add.")
-        return dusty_response("add", name=user.name)
+        if not chore:
+            return _twiml(dusty_response("unassigned"))
+        chore.assigned_to_id = user.id
+        db.session.commit()
+        return _twiml(dusty_response("claim", name=user.name))
 
-    # --- COMPLETE CHORE ---
-    elif intent == 'complete':
-        chore_name = entities.get('chore_name')
-        if not chore_name:
-            return dusty_response("Finish what? Be specific, my circuits can't guess.")
-        chore = complete_chore_by_name(chore_name, user)
-        if chore:
-            notify_admins(f"{user.name} completed '{chore.name}'.", twilio_client, TWILIO_PHONE_NUMBER)
-            return dusty_response("done", name=user.name)
-        else:
-            return dusty_response(f"No chore named '{chore_name}' found for you. Delusional much?")
+    return _twiml(dusty_response("unknown"))
 
-    # --- LIST CHORES ---
-    elif intent == 'list':
-        chores = list_user_chores(user)
-        if not chores:
-            return dusty_response("You're gloriously chore-free.")
-        chores_text = "\n".join([
-            f"• {ch.name} (Due: {ch.due_date.strftime('%Y-%m-%d') if ch.due_date else 'anytime'})"
-            for ch in chores[:5]
-        ])
-        return dusty_response("list", name=user.name, extra=chores_text)
 
-    # --- GREETINGS ---
-    elif intent == 'greeting':
-        return dusty_response("greetings", name=user.name)
 
-    # --- HELP ---
-    elif intent == 'help':
-        return dusty_response(
-            "Try commands like:\n"
-            "• add dishes to Becky due Friday\n"
-            "• done laundry\n"
-            "• list"
-        )
-
-    # --- UNKNOWN ---
-    return dusty_response("unknown", name=user.name)
+def _twiml(text):
+    """Wrap Dusty's reply in a Twilio MessagingResponse."""
+    print(f"[Dusty Replying] {text}")
+    resp = MessagingResponse()
+    resp.message(text)
+    return str(resp)
 
 
 if __name__ == '__main__':

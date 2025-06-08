@@ -8,7 +8,8 @@
     </div>
     <div class="mb-3">
         <label for="assigned_to" class="form-label">Assign To</label>
-        <select class="form-select" name="assigned_to" id="assigned_to" required>
+        <select class="form-select" name="assigned_to" id="assigned_to">
+            <option value="">-- Unassigned --</option>
             {% for user in users %}
                 <option value="{{ user.id }}">{{ user.name }}</option>
             {% endfor %}

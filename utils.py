@@ -68,6 +68,19 @@ DUSTY_RESPONSES = {
         "Hmm, you’re not on the list. Dusty only works for the chosen few.",
         "Access denied. You might want to get adopted by someone on the list.",
     ],
+    "unassigned": [
+        "You can’t claim a chore that doesn’t exist. Try again.",
+        "No unassigned chores found. Dusty’s not a miracle worker.",
+        "Claim what? There are no chores waiting for you.",
+        "You can’t claim a chore that’s already taken. Try harder.",
+        "No unclaimed chores available. Dusty’s not a charity.",
+        "You’re trying to claim a chore that’s already claimed. Nice try.",
+        "Claiming a chore that’s already assigned? Dusty doesn’t think so.",
+        "You can’t claim a chore that’s already in progress. Try again later.",
+        "No unclaimed chores available. Dusty’s not a miracle worker.",
+        "You can’t claim a chore that’s already taken. Nice try.",
+        "Claiming a chore that’s already assigned? Dusty doesn’t think so.",
+    ],
     "unknown": [
         "Dusty didn’t quite get that. Maybe try again?",
         "Dusty didn’t quite get that. Try again, but with words that make sense.",
@@ -81,6 +94,36 @@ DUSTY_RESPONSES = {
         "Dusty does not compute. Try again with actual instructions.",
         "That's not a valid chore request, unless you meant to confuse me. In which case, congrats.",
     ],
+    "claim": [
+        "Claimed! You’re now responsible for this chore. Don’t mess it up.",
+        "You’ve claimed it. Now don’t make me regret it.",
+        "Chore claimed. You’re on the hook now, {name}.",
+        "You’ve got it. Don’t think you can back out now.",
+        "Claimed! You’re now the proud owner of this chore. Enjoy.",
+        "Congratulations! You’ve just inherited a chore. Lucky you.",
+        "You’ve claimed it. Now get to work before I change my mind.",
+        "Chore claimed. You’re now the designated slacker.",
+        "You’ve claimed it. Don’t let it go to waste, {name}.",
+        "Chore claimed! You’re now the official procrastinator.",
+    ],
+    "help": [
+        "Need help? Here’s what Dusty can do:\n"
+        "• `add <chore> to <user> due <date>` - Assign a chore\n"
+        "• `done <chore>` - Mark a chore as completed\n"
+        "• `claim <chore>` - Claim an unassigned chore\n"
+        "• `list` - Show your assigned chores\n"
+        "• `help` - Show this message\n"
+        "• `greeting` - Get a Dusty-style greeting\n"
+        "Remember, Dusty is here to help... or roast you. Your choice.",
+        "Dusty’s help desk is open! Here’s what you can do:\n"
+        "• `add <chore> to <user> due <date>` - Assign a chore to someone\n"
+        "• `done <chore>` - Mark a chore as done\n"
+        "• `claim <chore>` - Claim an unassigned chore\n"
+        "• `list` - List your assigned chores\n"
+        "• `help` - Show this message\n"
+        "• `greeting` - Get a Dusty-style greeting\n"
+        "Use wisely, or Dusty might just roast you instead.",
+    ]
 }
 
 DUSTY_SNARK = [
@@ -118,25 +161,31 @@ def seasonal_greeting() -> str | None:
     return HOLIDAY_SNARK.get(md)
 
 def dusty_response(template_key_or_text, name=None, extra=None, include_seasonal=True) -> str:
-    """
-    Get a Dusty-style witty response from a category or literal string.
-    Adds seasonal greeting and occasional snark.
-    """
+    """ Get a Dusty-style witty response from a category or literal string. """
+    print(f"[DEBUG] Dusty called with: {template_key_or_text}")
+    
+    message = None
     if template_key_or_text in DUSTY_RESPONSES:
+        print("[DEBUG] Using category response")
         message = random.choice(DUSTY_RESPONSES[template_key_or_text])
-        message = message.format(name=name or "human", extra=extra or "")
+    elif isinstance(template_key_or_text, str) and template_key_or_text.strip():
+        message = template_key_or_text
     else:
-        message = template_key_or_text  # treat as plain text fallback
+        message = random.choice(DUSTY_RESPONSES["unknown"])  # safety net
 
-    # 15% chance to add a roast
-    if random.random() < 0.15 and DUSTY_SNARK:
-        message += " " + random.choice(DUSTY_SNARK)
+    if name:
+        message = message.replace("{name}", name)
 
-    # Add seasonal greeting if requested
+    # Occasionally roast the user
+    if random.random() < 0.15:
+        snark = random.choice(DUSTY_SNARK)
+        message += f" {snark}"
+
+    # Add holiday snark if applicable
     if include_seasonal:
-        seasonal = seasonal_greeting()
-        if seasonal:
-            message += f" {seasonal}"
+        holiday_msg = seasonal_greeting()
+        if holiday_msg:
+            message += f" {holiday_msg}"
 
     return f"[Dusty 🤖] {message}"
 
@@ -197,6 +246,9 @@ def seed_users_from_env(session):
 # -------------------------------
 # User Utilities
 # -------------------------------
+def get_user_by_name(name: str) -> User | None:
+    """Retrieve a user by their name (case-insensitive)."""
+    return User.query.filter(User.name.ilike(name.strip())).first()
 
 def get_user_by_phone(phone) :
     """Retrieve a user by their phone number."""
@@ -208,61 +260,45 @@ def get_user_by_phone(phone) :
 # -------------------------------
 # This function is used to parse the incoming SMS message and determine the intent.
 
-def get_intent(message):
-    message = message.strip().lower()
-    intent_data = {"intent": None, "chore": None, "user": None, "due": None, "missing": []}
+def get_intent(message: str) -> Tuple[str, dict]:
+    """Determine user intent and extract entities from a natural SMS."""
+    message = message.lower().strip()
+    entities = {}
 
-    # Match DONE
-    match = re.match(r"done\s+(.*)", message)
-    if match:
-        intent_data["intent"] = "complete_chore"
-        intent_data["chore"] = match.group(1).strip()
-        return intent_data
+    # Shortcut commands
+    if message in ["list", "my chores"]:
+        return "list", {}
+    if message in ["help", "commands"]:
+        return "help", {}
+    if message in ["hello", "hi", "hey", "greetings"]:
+        return "greeting", {}
+    
+    # DONE intent
+    if message.startswith("done"):
+        match = re.match(r"done\s+(.*)", message)
+        if match:
+            entities["chore"] = match.group(1).strip()
+            return "done", entities
 
-    # Match LIST
-    if message == "list":
-        intent_data["intent"] = "list_chores"
-        return intent_data
+    # CLAIM intent
+    if message.startswith("claim"):
+        match = re.match(r"claim\s+(.*)", message)
+        if match:
+            entities["chore"] = match.group(1).strip()
+            return "claim", entities
 
-    # Match ADD (flexible)
-    if message.startswith("add"):
-        intent_data["intent"] = "add_chore"
+    # ADD intent
+    add_match = re.match(r"(add|assign)\s+(.*?)\s+to\s+(\w+)\s+due\s+(.*)", message)
+    if add_match:
+        _, chore_name, assignee, due_str = add_match.groups()
+        entities["chore"] = chore_name.strip()
+        entities["assignee"] = assignee.strip()
+        due_date = dateparser.parse(due_str)
+        if due_date:
+            entities["due_date"] = due_date.date()
+        return "add", entities
 
-        # Extract chore name
-        chore_match = re.search(r"add\s+(.*?)(?:\s+to|\s+due|$)", message)
-        if chore_match:
-            intent_data["chore"] = chore_match.group(1).strip()
-
-        # Extract user (to NAME)
-        user_match = re.search(r"\bto\s+(\w+)", message)
-        if user_match:
-            intent_data["user"] = user_match.group(1).capitalize()
-
-        # Extract due date (due YYYY-MM-DD or "tomorrow", etc.)
-        due_match = re.search(r"\bdue\s+(\d{4}-\d{2}-\d{2}|\btomorrow\b|\btoday\b)", message)
-        if due_match:
-            due_text = due_match.group(1).strip()
-            if due_text == "today":
-                intent_data["due"] = datetime.today().date()
-            elif due_text == "tomorrow":
-                intent_data["due"] = datetime.today().date() + timedelta(days=1)
-            else:
-                try:
-                    intent_data["due"] = datetime.strptime(due_text, "%Y-%m-%d").date()
-                except ValueError:
-                    pass
-
-        # Track missing fields
-        if not intent_data["chore"]:
-            intent_data["missing"].append("chore")
-        if not intent_data["user"]:
-            intent_data["missing"].append("user")
-        if not intent_data["due"]:
-            intent_data["missing"].append("due")
-
-        return intent_data
-
-    return {"intent": "unknown", "message": message}
+    return "unknown", {}
 
 def parse_natural_date(text: str) -> datetime | None:
     if not text:
@@ -285,42 +321,56 @@ def parse_natural_date(text: str) -> datetime | None:
     # Fallback: try natural language
     return dateparser.parse(text)
 
-def parse_sms(text: str) -> tuple[str, dict]:
-    text = text.strip().lower()
-    print(f"[PARSE_SMS] Raw text: {text}")
 
-    # Match: "add dishes to Becky due Friday every week"
-    match = re.match(
-        r"add\s+(?P<chore>.+?)(?:\s+to\s+(?P<user>\w+))?(?:\s+due\s+(?P<due>.*?))?(?:\s+every\s+(?P<recurrence>\w+))?$",
-        text
-    )
 
-    if match:
-        return "add", {
-            "chore_name": match.group("chore").strip(),
-            "assignee": match.group("user").strip() if match.group("user") else None,
-            "due_date": match.group("due").strip() if match.group("due") else None,
-            "recurrence": match.group("recurrence").strip() if match.group("recurrence") else None,
-        }
+def parse_sms(message):
+    print(f"[NLP DEBUG] Parsing: {message}")
 
-    # Match: "done dishes"
-    match = re.match(r"done\s+(?P<chore>.+)", text)
-    if match:
-        return "complete", { "chore_name": match.group("chore").strip() }
+    message = message.lower().strip()
 
-    # List
-    if text in ("list", "ls"):
-        return "list", {}
+    # Normalize some synonyms
+    message = message.replace("assign", "add").replace("for", "to").replace("on", "due")
 
-    # Help
-    if text in ("help", "commands"):
-        return "help", {}
+    if not message.startswith("add "):
+        print("[NLP DEBUG] Not an ADD command")
+        return None
 
-    # Greetings
-    if any(word in text for word in ["hi", "hello", "hey", "morning", "evening"]):
-        return "greeting", {}
+    # Token-based heuristics
+    parts = message[4:].split(" due ")
 
-    return "unknown", {}
+    if len(parts) < 2:
+        print("[NLP DEBUG] Missing due date phrase")
+        return None
+
+    before_due, after_due = parts
+    chore_part = before_due.strip()  # e.g. 'vacuum to Becky'
+
+    if " to " not in chore_part:
+        print("[NLP DEBUG] Missing 'to' to identify assignee")
+        return None
+
+    chore_name, assignee_name = chore_part.split(" to ", 1)
+    chore_name = chore_name.strip()
+    assignee_name = assignee_name.strip()
+
+    # Handle recurrence if present
+    recurrence = None
+    if " every " in after_due:
+        due_text, recurrence_text = after_due.split(" every ", 1)
+        recurrence = recurrence_text.strip()
+    else:
+        due_text = after_due.strip()
+
+    # Parse due date naturally
+    try:
+        due_date = dateparser.parse(due_text, fuzzy=True).date()
+    except Exception as e:
+        print(f"[NLP DEBUG] Failed to parse due date: {e}")
+        return None
+
+    print(f"[NLP DEBUG] Extracted chore='{chore_name}', assignee='{assignee_name}', due='{due_date}', recurrence='{recurrence}'")
+    return chore_name, assignee_name, due_date, recurrence
+
     
 # -------------------------------
 # Chore Utilities
@@ -379,10 +429,8 @@ def get_upcoming_chores(user, days=3):
 
 
 def list_user_chores(user, limit=5):
-    chores = Chore.query.filter_by(assigned_to_id=user.id, completed=False)\
+    chores = Chore.query.filter_by(assigned_to_id=user, completed=False)\
                 .order_by(Chore.due_date.asc().nullslast())\
                 .limit(limit).all()
-    return [
-        f"{c.name} (Due: {c.due_date.strftime('%Y-%m-%d') if c.due_date else 'No due date'})"
-        for c in chores
-    ]
+    print(f"[DEBUG] Inside list_user_chores: Found {chores}")
+    return chores
