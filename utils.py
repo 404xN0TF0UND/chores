@@ -130,6 +130,17 @@ DUSTY_RESPONSES = {
         "Dusty can’t read your mind. Specify the chore you completed.",
         "You need to tell me which chore you just finished. Dusty’s not a mind reader.",
     ],
+    "no_chore": [
+        "You haven’t specified a chore to mark as done. Try again.",
+        "Dusty can’t mark a chore as done without a name. Specify one.",
+        "You need to tell me which chore you just finished. Dusty’s not a mind reader.",
+        "Invalid done request. Specify the chore you want to mark as done.",
+        "You can’t mark a chore as done without naming it. Try again.",
+        "Dusty needs a chore name to process your request. Specify one.",
+        "Dusty can’t read your mind. Specify the chore you completed.",
+        "You need to tell me which chore you just finished. Dusty’s not a mind reader.",
+    ],
+
     "claim_invalid": [
         "Claim what? You need to specify a chore to claim.",
         "Dusty can’t claim chores without a name. Specify one.",

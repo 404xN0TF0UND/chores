@@ -126,7 +126,13 @@ def handle_sms():
 
     if intent == "add":
         chore_name = entities.get("chore")
+        
         assignee_name = entities.get("assignee")
+        if not assignee_name:
+            assignee_name = user.name  # default to self if no assignee provided
+        else:
+            assignee_name = get_user_by_name(assignee_name)
+
         due_date = entities.get("due_date")
         recurrence = entities.get("recurrence")
 
@@ -200,6 +206,12 @@ def handle_sms():
             return _twiml(dusty_response("claim", chore=chore.name, name=user.name))
         else:
             return _twiml(dusty_response("claim_fail", chore=chore_name))
+        
+    elif intent == "help":
+        return _twiml(dusty_response("help"))
+
+    elif intent == "greeting":
+        return _twiml(dusty_response("greeting", name=user.name))
     # Unknown or unsupported intent
     return _twiml(dusty_response("unknown"))
     
