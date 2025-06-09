@@ -189,7 +189,7 @@ def handle_sms():
     elif intent == "claim":
         chore_name = entities.get("chore", "").strip(). lower()
         chore = Chore.query.filter(
-            Chore.description.ilike(f"%{chore_name}%"),
+            Chore.name.ilike(f"%{chore_name}%"),
             Chore.assigned_to_id == None,  # must be unassigned
         ).first()
 
@@ -197,7 +197,7 @@ def handle_sms():
             chore.assigned_to_id = user.id
             db.session.commit()
 
-            return _twiml(dusty_response("claim", chore=chore.description, name=user.name))
+            return _twiml(dusty_response("claim", chore=chore.name, name=user.name))
         else:
             return _twiml(dusty_response("claim_fail", chore=chore_name))
     # Unknown or unsupported intent
