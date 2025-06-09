@@ -446,7 +446,7 @@ def parse_sms_nlp(message: str) -> Tuple[str, dict]:
     if any(word in message_lower for word in ['help', 'commands', 'what can you do']):
         return "help", {}
 
-    if any(word in message_lower for word in ['hi', 'hello', 'greetings']):
+    if any(word in message_lower for word in ['hi', 'hello', 'greetings', 'hey', 'howdy', 'yo']):
         return "greeting", {}
 
     if message_lower.startswith("list"):
