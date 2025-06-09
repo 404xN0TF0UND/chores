@@ -211,7 +211,7 @@ def handle_sms():
         return _twiml(dusty_response("help"))
 
     elif intent == "greeting":
-        return _twiml(dusty_response("greeting"))
+        return _twiml(dusty_response("greetings"))
     # Unknown or unsupported intent
     return _twiml(dusty_response("unknown"))
     

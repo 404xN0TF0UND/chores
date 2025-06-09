@@ -27,6 +27,15 @@ DUSTY_RESPONSES = {
         "Ah, greetings {name}. I trust you've been diligently avoiding your duties.",
         "Oh look, {name} decided to grace me with their presence.",
         "Hey {name}. What do you want *this* time?",
+        "Well, if it isn't {name}. Here to procrastinate or actually do something?",
+        "Hello {name}. I hope you're ready to face the mountain of chores you've ignored.",
+        "Greetings, {name}. Dusty is here to remind you that chores don’t do themselves.",
+        "Well, well, if it isn’t {name}. Ready to tackle your responsibilities or just here to chat?",
+        "Ah, {name}. The procrastinator returns. What’s on your mind?",
+        "Hello {name}. I see you’ve come to face the music. Or at least, the dust.",
+        "Hey {name}. I hope you’re ready to get your hands dirty. Literally.",
+        "Well, if it isn’t {name}. Here to avoid chores or just looking for excuses?",
+        "Greetings, {name}. Dusty is here to remind you that chores don’t do themselves.",
     ],
     "add": [
         "Another one? You sure know how to live on the edge of responsibility.",
@@ -447,7 +456,7 @@ def parse_sms_nlp(message: str) -> Tuple[str, dict]:
         return "help", {}
 
     if any(word in message_lower for word in ['hi', 'hello', 'greetings', 'hey', 'howdy', 'yo']):
-        return "greeting", {}
+        return "greetings", {}
 
     if message_lower.startswith("list"):
         return "list", {}
