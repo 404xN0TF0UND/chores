@@ -105,6 +105,7 @@ DUSTY_RESPONSES = {
         "Chore claimed. You’re now the designated slacker.",
         "You’ve claimed it. Don’t let it go to waste, {name}.",
         "Chore claimed! You’re now the official procrastinator.",
+    
     ],
     "help": [
         "Need help? Here’s what Dusty can do:\n"
@@ -123,7 +124,45 @@ DUSTY_RESPONSES = {
         "• `help` - Show this message\n"
         "• `greeting` - Get a Dusty-style greeting\n"
         "Use wisely, or Dusty might just roast you instead.",
-    ]
+    ],
+    "done_invalid": [
+        "Done what? You need to specify a chore to mark as done.",
+        "Dusty can’t read your mind. Specify the chore you completed.",
+        "You need to tell me which chore you just finished. Dusty’s not a mind reader.",
+    ],
+    "claim_invalid": [
+        "Claim what? You need to specify a chore to claim.",
+        "Dusty can’t claim chores without a name. Specify one.",
+        "You need to tell me which chore you want to claim. Dusty’s not a psychic.",
+        "Invalid claim request. Specify the chore you want to claim.",
+        "You can’t claim a chore without naming it. Try again.",
+        "Dusty needs a chore name to process your claim. Specify one.",
+        "Invalid claim command. You must specify a chore to claim.",
+        "You can’t claim a chore without a name. Specify one.",
+        "Dusty needs a chore name to process your claim. Specify one.",
+    ],
+    "claim_fail": [
+        "No such chore to claim. Try again with a valid one.",
+        "That chore is already claimed. Try another one.",
+        "Claim failed. Either the chore doesn’t exist or it’s already taken.",
+        "You can’t claim that chore. It’s already assigned to someone else.",
+        "Claim failed. Either the chore is already taken or doesn’t exist.",
+        "That chore is already claimed. Try claiming an unassigned one.",
+        "Claim failed. Either the chore is already taken or doesn’t exist.",
+        "You can’t claim that chore. It’s already assigned to someone else.",
+    ],
+    "claim_success": [
+        "Claimed! You’re now responsible for this chore. Don’t mess it up.",
+        "You’ve claimed it. Now don’t make me regret it.",
+        "Chore claimed. You’re on the hook now, {name}.",
+        "You’ve got it. Don’t think you can back out now.",
+        "Claimed! You’re now the proud owner of this chore. Enjoy.",
+        "Congratulations! You’ve just inherited a chore. Lucky you.",
+        "You’ve claimed it. Now get to work before I change my mind.",
+        "Chore claimed. You’re now the designated slacker.",
+        "You’ve claimed it. Don’t let it go to waste, {name}.",
+        "Chore claimed! You’re now the official procrastinator.",
+],
 }
 
 DUSTY_SNARK = [

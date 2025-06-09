@@ -179,35 +179,27 @@ def handle_sms():
             return _twiml(dusty_response("list", extra=reply))
         else:
             # No assigned chores, suggest unassigned
-            unassigned = Chore.query.filter_by(assigned_to_id=None, completed=False).limit(5).all()
+            unassigned = get_unassigned_chores()
             if unassigned:
-                reply = "\n".join([
-                    f"- {c.name} (due {c.due_date.strftime('%Y-%m-%d') if c.due_date else 'no due date'})"
-                    for c in unassigned
-                ])
-                return _twiml(dusty_response("no_chores", extra=reply))
+                options = "\n".join([f"- {c.name} (due {c.due_date.strftime('%Y-%m-%d') if c.due_date else 'no due date'})" for c in unassigned])
+                return _twiml(dusty_response("no_chores") + f'\nYou can claim one of these unassigned chores:\n{options}\nReply with "claim <chore name>" to claim one.')
             else:
-                return _twiml(dusty_response("nothing_to_do"))
+                return _twiml(dusty_response("no_chores"))
 
     elif intent == "claim":
-        chore_name = entities.get("chore")
-        if not chore_name:
-            return _twiml(dusty_response("claim_invalid"))
-
+        chore_name = entities.get("chore", "").strip(). lower()
         chore = Chore.query.filter(
-            Chore.name.ilike(f"%{chore_name}%"),
-            Chore.assigned_to_id == user.id,
-            Chore.completed == False
+            Chore.description.ilike(f"%{chore_name}%"),
+            Chore.assigned_to_id == None,  # must be unassigned
         ).first()
 
-        if not chore:
-            return _twiml(dusty_response("not_found_unassigned", extra=chore_name))
+        if chore:
+            chore.assigned_to_id = user.id
+            db.session.commit()
 
-        chore.assigned_to_id = user.id
-        db.session.commit()
-
-        return _twiml(dusty_response("claim", extra=chore.name))
-
+            return _twiml(dusty_response("claim", chore=chore.description, name=user.name))
+        else:
+            return _twiml(dusty_response("claim_fail", chore=chore_name))
     # Unknown or unsupported intent
     return _twiml(dusty_response("unknown"))
     
