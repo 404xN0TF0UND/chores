@@ -137,7 +137,7 @@ def handle_sms():
         recurrence = entities.get("recurrence")
 
         if not all([chore_name, assignee_name]):
-            return _twiml(dusty_response("add_invalid"))
+            return _twiml(dusty_response("add_invalid",user=user.name if user else "there"))
 
         assignee = get_user_by_name(assignee_name)
         if not assignee:
@@ -166,7 +166,7 @@ def handle_sms():
         ).first()
 
         if not chore:
-            return _twiml(dusty_response("not_found", extra=chore_name))
+            return _twiml(dusty_response("not_found", extra=chore_name, name=user.name if user else "there"))
 
         chore.completed = True
         chore.completed_at = datetime.utcnow()
@@ -182,7 +182,7 @@ def handle_sms():
                 f"- {c.name} (due {c.due_date.strftime('%Y-%m-%d') if c.due_date else 'no due date'})"
                 for c in chores
             ])
-            return _twiml(dusty_response("list", extra=reply))
+            return _twiml(dusty_response("list", extra=reply, name=user.name if user else "there"))
         else:
             # No assigned chores, suggest unassigned
             unassigned = get_unassigned_chores()
@@ -190,7 +190,7 @@ def handle_sms():
                 options = "\n".join([f"- {c.name} (due {c.due_date.strftime('%Y-%m-%d') if c.due_date else 'no due date'})" for c in unassigned])
                 return _twiml(dusty_response("no_chores") + f'\nYou can claim one of these unassigned chores:\n{options}\nReply with "claim <chore name>" to claim one.')
             else:
-                return _twiml(dusty_response("no_chores"))
+                return _twiml(dusty_response("no_chores", user=user.name if user else "there"))
 
     elif intent == "claim":
         chore_name = entities.get("chore", "").strip(). lower()
@@ -203,17 +203,17 @@ def handle_sms():
             chore.assigned_to_id = user.id
             db.session.commit()
 
-            return _twiml(dusty_response("claim", chore=chore.name, name=user.name))
+            return _twiml(dusty_response("claim", chore=chore.name, name=user.name if user else "there"))
         else:
-            return _twiml(dusty_response("claim_fail", chore=chore_name))
+            return _twiml(dusty_response("claim_fail", chore=chore_name, name=user.name if user else "there"))
         
     elif intent == "help":
-        return _twiml(dusty_response("help"))
+        return _twiml(dusty_response("help", name=user.name if user else "there"))
 
     elif intent == "greetings":
-        return _twiml(dusty_response("greetings"))
+        return _twiml(dusty_response("greetings", name=user.name if user else "there"))
     # Unknown or unsupported intent
-    return _twiml(dusty_response("unknown"))
+    return _twiml(dusty_response("unknown", name=user.name if user else "there"))
     
 
 

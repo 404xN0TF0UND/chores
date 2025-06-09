@@ -236,9 +236,16 @@ def dusty_response(template_key_or_text, include_seasonal=True, **kwargs) -> str
         message = random.choice(DUSTY_RESPONSES[template_key_or_text])
     else:
         message = template_key_or_text
-
+     # Set fallback values for known Dusty template variables
+    safe_kwargs = {
+        "name": kwargs.get("name", "there"),
+        "chore": kwargs.get("chore", "something unpleasant"),
+        "due": kwargs.get("due", "someday"),
+        **kwargs    
+    }  # ensure all keys are present
+    
     try:
-        formatted = message.format(**kwargs)
+        formatted = message.format(**safe_kwargs)
     except KeyError as e:
         print(f"[WARNING] Missing format key in Dusty response: {e}")
         formatted = message  # fallback to raw if formatting fails
