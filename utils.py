@@ -59,10 +59,10 @@ DUSTY_RESPONSES = {
     "list": [
         "Here’s your filth inventory. Let’s clean it up, champ:",
         "Ah, the glamorous life of domestic servitude. Behold your task list:",
-        "The grime waits for no one. Here’s what’s left:",
+        "The grime waits for no one. Here’s what’s left:\n{extra}",
         "These chores won’t clean themselves. Sadly, neither will you.",
-        "Here’s what you still haven’t done. Just saying.",
-        "Dusty's list of disappointment:",
+        "Here’s what you still haven’t done. Just saying.:\n{extra}",
+        "Dusty's list of disappointment:\n{extra}",
         "You asked, I delivered. These chores won’t do themselves.",
         "Brace yourself. Chores ahead:",
     ],

@@ -248,6 +248,11 @@ def handle_sms():
 
     def dusty_with_memory(key_or_text, **kwargs):
         base = dusty_response(key_or_text, **kwargs)
+        
+        # Randomly pick one if it's a list
+        if isinstance(base, list):
+            base = random.choice(base)
+
         memory = memory_based_commentary(user, intent)
         return f"{base} {memory}".strip()
     if not user:
