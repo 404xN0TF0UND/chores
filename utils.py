@@ -251,12 +251,13 @@ def dusty_response(template_key_or_text, include_seasonal=True, **kwargs) -> str
         **kwargs: Variables to inject (e.g., name, chore).
     """
     
-    print(f"[DEBUG] Dusty called with: {template_key_or_text}")
+    
     print(f"[DEBUG] Selected Dusty template: {message}")
     message = None
 
     if template_key_or_text in DUSTY_RESPONSES:
         print("[DEBUG] Using category response")
+        print(f"[DEBUG] Selected Dusty template: {message}")
         message = random.choice(DUSTY_RESPONSES[template_key_or_text])
     else:
         message = template_key_or_text
