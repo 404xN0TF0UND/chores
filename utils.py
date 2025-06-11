@@ -242,65 +242,115 @@ def seasonal_greeting() -> str | None:
     return HOLIDAY_SNARK.get(md)
 
 def dusty_response(template_key_or_text, include_seasonal=True, **kwargs) -> str:
-    """
-    Generate a Dusty-style response from a category key or literal string.
-
-    Args:
-        template_key_or_text (str): Key in DUSTY_RESPONSES or raw response.
-        include_seasonal (bool): Include seasonal message if available.
-        **kwargs: Variables to inject (e.g., name, chore).
-    """
-    
-    
-    print(f"[DEBUG] Selected Dusty template: {message}")
-    message = None
+    """Generate a Dusty-style response from a category key or literal string."""
+    print(f"[DEBUG] Dusty called with: {template_key_or_text}")
 
     if template_key_or_text in DUSTY_RESPONSES:
         print("[DEBUG] Using category response")
-        print(f"[DEBUG] Selected Dusty template: {message}")
         message = random.choice(DUSTY_RESPONSES[template_key_or_text])
+        print(f"[DEBUG] Selected Dusty template: {message}")
     else:
         message = template_key_or_text
-     # Set fallback values for known Dusty template variables
+
+    # Safe fallback variables
     safe_kwargs = {
         "name": kwargs.get("name", "there"),
         "chore": kwargs.get("chore", "something unpleasant"),
         "due": kwargs.get("due", "someday"),
-        **kwargs    
-    }  # ensure all keys are present
-    
+        **kwargs
+    }
+
     try:
         formatted = message.format(**safe_kwargs)
     except KeyError as e:
         print(f"[WARNING] Missing format key in Dusty response: {e}")
-        formatted = message  # fallback to raw if formatting fails
+        formatted = message  # fallback if formatting fails
 
-    # Add seasonal snark occasionally
+    # Seasonal extras
     if include_seasonal:
         holiday = seasonal_greeting()
         if holiday and random.random() < 0.5:
             formatted += f" 🎉 {holiday}"
 
-    # 15% chance to add snark
+    # 15% chance of snark
     if random.random() < 0.15:
-        roast = random.choice(DUSTY_SNARK)
-        formatted += f" 💥 {roast}"
+        formatted += f" 💥{random.choice(DUSTY_SNARK)}"
 
     # Intent-aware sass
     if "user" in kwargs and isinstance(kwargs["user"], User):
-        prev_intent = kwargs["user"].last_intent
-        prev_seen = kwargs["user"].last_seen
-
-        if prev_seen:
-            minutes_ago = (datetime.utcnow() - prev_seen).total_seconds() / 60
+        user = kwargs["user"]
+        if user.last_seen:
+            minutes_ago = (datetime.utcnow() - user.last_seen).total_seconds() / 60
             if minutes_ago < 5 and random.random() < 0.5:
                 formatted += f" (Back already? We just talked {int(minutes_ago)} minutes ago.)"
-
-        if prev_intent == template_key_or_text and random.random() < 0.5:
+        if user.last_intent == template_key_or_text and random.random() < 0.5:
             formatted += " Déjà vu much?"
-    
-    
+
     return f"[Dusty 🤖] {formatted}"
+
+
+
+
+# def dusty_response(template_key_or_text, include_seasonal=True, **kwargs) -> str:
+#     """
+#     Generate a Dusty-style response from a category key or literal string.
+
+#     Args:
+#         template_key_or_text (str): Key in DUSTY_RESPONSES or raw response.
+#         include_seasonal (bool): Include seasonal message if available.
+#         **kwargs: Variables to inject (e.g., name, chore).
+#     """
+    
+    
+#     print(f"[DEBUG] Selected Dusty template: {message}")
+#     message = None
+
+#     if template_key_or_text in DUSTY_RESPONSES:
+#         print("[DEBUG] Using category response")
+#         print(f"[DEBUG] Selected Dusty template: {message}")
+#         message = random.choice(DUSTY_RESPONSES[template_key_or_text])
+#     else:
+#         message = template_key_or_text
+#      # Set fallback values for known Dusty template variables
+#     safe_kwargs = {
+#         "name": kwargs.get("name", "there"),
+#         "chore": kwargs.get("chore", "something unpleasant"),
+#         "due": kwargs.get("due", "someday"),
+#         **kwargs    
+#     }  # ensure all keys are present
+    
+#     try:
+#         formatted = message.format(**safe_kwargs)
+#     except KeyError as e:
+#         print(f"[WARNING] Missing format key in Dusty response: {e}")
+#         formatted = message  # fallback to raw if formatting fails
+
+#     # Add seasonal snark occasionally
+#     if include_seasonal:
+#         holiday = seasonal_greeting()
+#         if holiday and random.random() < 0.5:
+#             formatted += f" 🎉 {holiday}"
+
+#     # 15% chance to add snark
+#     if random.random() < 0.15:
+#         roast = random.choice(DUSTY_SNARK)
+#         formatted += f" 💥 {roast}"
+
+#     # Intent-aware sass
+#     if "user" in kwargs and isinstance(kwargs["user"], User):
+#         prev_intent = kwargs["user"].last_intent
+#         prev_seen = kwargs["user"].last_seen
+
+#         if prev_seen:
+#             minutes_ago = (datetime.utcnow() - prev_seen).total_seconds() / 60
+#             if minutes_ago < 5 and random.random() < 0.5:
+#                 formatted += f" (Back already? We just talked {int(minutes_ago)} minutes ago.)"
+
+#         if prev_intent == template_key_or_text and random.random() < 0.5:
+#             formatted += " Déjà vu much?"
+    
+    
+#     return f"[Dusty 🤖] {formatted}"
 
 def get_due_chores_message(session) -> str:
     """
