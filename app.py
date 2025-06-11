@@ -264,14 +264,38 @@ def handle_sms():
 
     if intent == "done" and entities.get("chore"):
         chore_name = entities["chore"].lower()
-        stat = ChoreStats.query.filter_by(user_id=user.id, chore_name=chore_name).first()
-        if not stat:
-            stat = ChoreStats(user_id=user.id, chore_name=chore_name, times_completed=1)
-            db.session.add(stat)
-        else:
-            stat.times_completed += 1
 
-        # Update user's favorite chore
+    # Find the matching incomplete assigned chore
+        chore = Chore.query.filter(
+            Chore.name.ilike(f"%{chore_name}%"),
+            Chore.assigned_to_id == user.id,
+            Chore.completed == False
+        ).first()
+
+        if not chore:
+            return dusty_response("not_found", chore=chore_name)
+
+        # ✅ Mark as complete
+        chore.completed = True
+        db.session.add(chore)
+
+        # ✅ Add/update ChoreStats
+        stat = ChoreStats.query.filter_by(user_id=user.id, chore_name=chore.name).first()
+        if stat:
+            stat.times_completed += 1
+        else:
+            stat = ChoreStats(user_id=user.id, chore_name=chore.name, times_completed=1)
+            db.session.add(stat)
+
+        # ✅ Log in ChoreHistory
+        history = ChoreHistory(chore_name=chore.name, user_id=user.id, completed=True)
+        db.session.add(history)
+
+        # ✅ Update user memory
+        user.total_chores_completed += 1
+        user.last_seen = datetime.utcnow()
+
+        # ✅ Update favorite chore
         favorite = (
             ChoreStats.query
             .filter_by(user_id=user.id)
@@ -281,7 +305,8 @@ def handle_sms():
         if favorite:
             user.favorite_chore = favorite.chore_name
 
-    db.session.commit()
+        db.session.commit()
+        return dusty_response("done", chore=chore.name)
 
     # Update User Memory
     if user:
