@@ -416,7 +416,7 @@ def handle_sms():
                     f"-{c.name} (due {c.due_date.strftime('%Y-%m-%d') if c.due_date else 'anytime'})"
                     for c in unassigned
                 ) + "\nReply with \"claim <chore name>\" to cliam one."
-                return _twiml(dusty_with_memory("no_chores"), extra=suggestion)
+                return _twiml(dusty_with_memory("no_chores", extra=suggestion))
             else:
                 return _twiml(dusty_with_memory("no_chores"))
 
