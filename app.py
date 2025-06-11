@@ -431,7 +431,7 @@ def handle_sms():
         # ✅ Notify admins (Becky and Ronnie)
         notify_admins(chore, user)
 
-        return _twiml(dusty_with_memory("done", extra=chore.name))
+        return _twiml(dusty_with_memory("done", extra=f"{chore.name} is finally off the list. Miracles happen." user=user))
 
     elif intent == "list":
         chores = list_user_chores(user)
