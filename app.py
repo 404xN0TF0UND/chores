@@ -102,6 +102,12 @@ def reassign_chore(chore_id):
     chore = Chore.query.get_or_404(chore_id)
     chore.assigned_to_id = new_user_id
     db.session.commit()
+    
+    # Notify Reassiged User
+    assignee = User.query.get(new_user_id)
+    if assignee and assignee.phone:
+        message = f"Chore updated: {chore.name} has been assigned to you (due {chore.due_date.strftime('%b %d') if chore.due_date else 'someday'})."
+        send_sms(assignee.phone, message)
     flash(f"Reassigned chore: {chore.name}", "info")
     return redirect(url_for('index'))
 
@@ -229,6 +235,10 @@ def handle_sms():
     print(f"[SMS RECEIVED] From: {from_number} | Message: '{incoming_msg}'")
 
     user = get_user_by_phone(from_number)
+    
+    intent, entities = parse_sms_nlp(incoming_msg)
+    print(f"[INTENT] {intent} | [ENTITIES] {entities}")
+
     def dusty_with_memory(key_or_text, **kwargs):
         base = dusty_response(key_or_text, **kwargs)
         memory = memory_based_commentary(user, intent)
@@ -273,8 +283,8 @@ def handle_sms():
         db.session.commit() 
 
     # NLP intent + entity parsing
-    intent, entities = parse_sms_nlp(incoming_msg)
-    print(f"[INTENT] {intent} | [ENTITIES] {entities}")
+    # intent, entities = parse_sms_nlp(incoming_msg)
+    # print(f"[INTENT] {intent} | [ENTITIES] {entities}")
 
     if intent == "add":
         chore_name = entities.get("chore")
