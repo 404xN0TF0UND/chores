@@ -58,7 +58,7 @@ def index():
     user = get_admin_user()
     chores = Chore.query.order_by(Chore.due_date).all()
     users = User.query.order_by(User.name).all()
-    return render_template('index.html', chores=chores)
+    return render_template('index.html', chores=chores, users=users, user=user)
 
 @app.route('/completed')
 def completed():
