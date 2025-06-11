@@ -46,6 +46,12 @@ DUSTY_RESPONSES = {
         "Fine. I’ll add it. But I won’t be happy about it.",
         "Chore added. Because obviously no one else was going to do it.",
     ],
+    "assigned": [
+        "You’ve been *blessed* with a new chore: {extra}",
+        "Guess who’s got more work? You. {extra}",
+        "Assigned: {extra}. Try not to mess it up.",
+        "Another one for your growing list: {extra}",
+    ],
     "done": [
         "Well look at you go. Another one bites the dust. 🧹",
         "You did a thing! Gold star for you. ⭐",
