@@ -23,7 +23,7 @@
         <span class="badge bg-light text-dark">Completed</span>
         {% endif %}
 
-        {% if current_user.is_authenticated and current_user.is_admin %}
+        {% if user and user.is_admin %}
         <!-- Admin Buttons -->
         <div class="mt-2">
           <!-- DELETE -->
