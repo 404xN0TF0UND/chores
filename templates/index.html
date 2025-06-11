@@ -37,8 +37,13 @@
           </form>
 
           <!-- REASSIGN -->
-          <form action="{{ url_for('assign_chore', chore_id=chore.id) }}" method="GET" style="display:inline;">
-            <button type="submit" class="btn btn-info btn-sm">Assign</button>
+          <form action="{{ url_for('reassign_chore', chore_id=chore.id) }}" method="POST" style="display:inline;">
+            <select name="user_id" class="form-select form-select-sm d-inline w-auto">
+              {% for u in users %}
+                <option value="{{ u.id }}" {% if chore.assigned_to_id == u.id %}selected{% endif %}>{{ u.name }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-info btn-sm">Reassign</button>
           </form>
 
           <!-- SNOOZE -->
