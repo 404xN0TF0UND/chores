@@ -14,7 +14,7 @@ from utils import (
     seed_users_from_env, get_user_by_phone, get_user_by_name,
     dusty_response, get_assigned_chores, get_completed_chores,
     get_unassigned_chores, get_chore_history, complete_chore_by_name,
-    notify_admins, get_upcoming_chores, list_user_chores,
+    get_upcoming_chores, list_user_chores,
     parse_natural_date,parse_sms_nlp,memory_based_commentary
 )
 print("[BOOT] Flask is starting up")
