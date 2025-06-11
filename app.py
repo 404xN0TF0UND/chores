@@ -114,7 +114,7 @@ def reassign_chore(chore_id):
             f"{chore.name} was lonely. You've been *carefully selected* to fix that."
 
         ])
-        send_sms(assignee.phone, f"f[Dusty 🤖] {sass}")
+        send_sms(assignee.phone, f"[Dusty 🤖] {sass}")
     flash(f"Reassigned chore: {chore.name}", "info")
     return redirect(url_for('index'))
 
@@ -262,57 +262,57 @@ def handle_sms():
     if intent == "list":
         user.total_list_requests += 1
 
-    if intent == "done" and entities.get("chore"):
-        chore_name = entities["chore"].lower()
+    # if intent == "done" and entities.get("chore"):
+    #     chore_name = entities["chore"].lower()
 
-    # Find the matching incomplete assigned chore
-        chore = Chore.query.filter(
-            Chore.name.ilike(f"%{chore_name}%"),
-            Chore.assigned_to_id == user.id,
-            Chore.completed == False
-        ).first()
+    # # Find the matching incomplete assigned chore
+    #     chore = Chore.query.filter(
+    #         Chore.name.ilike(f"%{chore_name}%"),
+    #         Chore.assigned_to_id == user.id,
+    #         Chore.completed == False
+    #     ).first()
 
-        if not chore:
-            return dusty_response("not_found", chore=chore_name)
+    #     if not chore:
+    #         return dusty_response("not_found", chore=chore_name)
 
-        # ✅ Mark as complete
-        chore.completed = True
-        db.session.add(chore)
+    #     # ✅ Mark as complete
+    #     chore.completed = True
+    #     db.session.add(chore)
 
-        # ✅ Add/update ChoreStats
-        stat = ChoreStats.query.filter_by(user_id=user.id, chore_name=chore.name).first()
-        if stat:
-            stat.times_completed += 1
-        else:
-            stat = ChoreStats(user_id=user.id, chore_name=chore.name, times_completed=1)
-            db.session.add(stat)
+    #     # ✅ Add/update ChoreStats
+    #     stat = ChoreStats.query.filter_by(user_id=user.id, chore_name=chore.name).first()
+    #     if stat:
+    #         stat.times_completed += 1
+    #     else:
+    #         stat = ChoreStats(user_id=user.id, chore_name=chore.name, times_completed=1)
+    #         db.session.add(stat)
 
-        # ✅ Log in ChoreHistory
-        history = ChoreHistory(chore_name=chore.name, user_id=user.id, completed=True)
-        db.session.add(history)
+    #     # ✅ Log in ChoreHistory
+    #     history = ChoreHistory(chore_name=chore.name, user_id=user.id, completed=True)
+    #     db.session.add(history)
 
-        # ✅ Update user memory
-        user.total_chores_completed += 1
-        user.last_seen = datetime.utcnow()
+    #     # ✅ Update user memory
+    #     user.total_chores_completed += 1
+    #     user.last_seen = datetime.utcnow()
 
-        # ✅ Update favorite chore
-        favorite = (
-            ChoreStats.query
-            .filter_by(user_id=user.id)
-            .order_by(ChoreStats.times_completed.desc())
-            .first()
-        )
-        if favorite:
-            user.favorite_chore = favorite.chore_name
+    #     # ✅ Update favorite chore
+    #     favorite = (
+    #         ChoreStats.query
+    #         .filter_by(user_id=user.id)
+    #         .order_by(ChoreStats.times_completed.desc())
+    #         .first()
+    #     )
+    #     if favorite:
+    #         user.favorite_chore = favorite.chore_name
 
-        db.session.commit()
-        return dusty_response("done", chore=chore.name)
+    #     db.session.commit()
+    #     return dusty_response("done", chore=chore.name)
 
-    # Update User Memory
-    if user:
-        user.last_seen = datetime.utcnow()
-        user.last_intent = intent
-        db.session.commit() 
+    # # Update User Memory
+    # if user:
+    #     user.last_seen = datetime.utcnow()
+    #     user.last_intent = intent
+    #     db.session.commit() 
 
     # NLP intent + entity parsing
     # intent, entities = parse_sms_nlp(incoming_msg)
@@ -353,45 +353,72 @@ def handle_sms():
         if not chore_name:
             return _twiml(dusty_with_memory("done_invalid"))
 
+        # Try to find the chore assigned to this user that matches and is not completed
         chore = Chore.query.filter(
             Chore.name.ilike(f"%{chore_name}%"),
             Chore.assigned_to_id == user.id,
-            Chore.completed == False
+         Chore.completed == False
         ).first()
 
         if not chore:
             return _twiml(dusty_with_memory("not_found", extra=chore_name, name=user.name if user else "there"))
 
+        # ✅ Mark chore as completed
         chore.completed = True
         chore.completed_at = datetime.utcnow()
-        
-        # Add history record
-        history = ChoreHistory(
-            chore_name=chore.name,
-            user_id=user.id
-        )
+        db.session.add(chore)
+
+        # ✅ Add or update ChoreStats
+        stat = ChoreStats.query.filter_by(user_id=user.id, chore_name=chore.name).first()
+        if stat:
+            stat.times_completed += 1
+        else:
+            stat = ChoreStats(user_id=user.id, chore_name=chore.name, times_completed=1)
+            db.session.add(stat)
+
+        # ✅ Log completion in ChoreHistory
+        history = ChoreHistory(chore_name=chore.name, user_id=user.id, completed=True)
         db.session.add(history)
+
+        # ✅ Update user memory
+        user.total_chores_completed += 1
+        user.last_seen = datetime.utcnow()
+
+        # ✅ Update user's favorite chore
+        favorite = (
+            ChoreStats.query
+            .filter_by(user_id=user.id)
+            .order_by(ChoreStats.times_completed.desc())
+            .first()
+        )
+        if favorite:
+            user.favorite_chore = favorite.chore_name
+
         db.session.commit()
-        
+
+        # ✅ Notify admins (Becky and Ronnie)
         notify_admins(chore, user)
+
         return _twiml(dusty_with_memory("done", extra=chore.name))
 
     elif intent == "list":
         chores = list_user_chores(user)
         if chores:
-            reply = "\n".join([
-                f"- {c.name} (due {c.due_date.strftime('%Y-%m-%d') if c.due_date else 'no due date'})"
-                for c in chores
-            ])
-            return _twiml(dusty_with_memory("list", extra=reply, name=user.name if user else "there"))
+          lines = [f"- {chore.name} (due {chore.due_date.strftime('%Y-%m-%d') if chore.due_date else 'anytime'})"
+                   for chore in chores]
+          response = "\n".join(lines)
+          return _twiml(dusty_with_memory("list", extra=suggestion))
         else:
             # No assigned chores, suggest unassigned
-            unassigned = get_unassigned_chores()
+            unassigned = get_unassigned_chores(limit=3)
             if unassigned:
-                options = "\n".join([f"- {c.name} (due {c.due_date.strftime('%Y-%m-%d') if c.due_date else 'no due date'})" for c in unassigned])
-                return _twiml(dusty_with_memory("no_chores") + f'\nYou can claim one of these unassigned chores:\n{options}\nReply with "claim <chore name>" to claim one.')
+                suggestion = "\nYou can claim one of these:\n" + "\n".join(
+                    f"-{c.name} (due {c.due_date.strftime('%Y-%m-%d') if c.due_date else 'anytime'})"
+                    for c in unassigned
+                ) + "\nReply with \"claim <chore name>\" to cliam one."
+                return _twiml(dusty_with_memory("no_chores"), extra=suggestion)
             else:
-                return _twiml(dusty_with_memory("no_chores", user=user.name if user else "there"))
+                return _twiml(dusty_with_memory("no_chores"))
 
     elif intent == "claim":
         chore_name = entities.get("chore", "").strip(). lower()

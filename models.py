@@ -52,7 +52,7 @@ class ChoreStats(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     chore_name = db.Column(db.String(100), nullable=False)
-    completion_count = db.Column(db.Integer, default=1)
+    times_completed = db.Column(db.Integer, default=1)
 
     __table_args__ = (
         db.UniqueConstraint('user_id', 'chore_name', name='unique_user_chore'),
