@@ -412,18 +412,18 @@ def handle_sms():
           lines = [f"- {chore.name} (due {chore.due_date.strftime('%Y-%m-%d') if chore.due_date else 'anytime'})"
                    for chore in chores]
           response = "\n".join(lines)
-          return _twiml(dusty_with_memory("list", extra=response))
+          return _twiml(dusty_with_memory("list", extra=response, user=user))
         else:
             # No assigned chores, suggest unassigned
-            unassigned = get_unassigned_chores(limit=3)
+            unassigned = get_unassigned_chores()[:3]
             if unassigned:
                 suggestion = "\nYou can claim one of these:\n" + "\n".join(
                     f"-{c.name} (due {c.due_date.strftime('%Y-%m-%d') if c.due_date else 'anytime'})"
                     for c in unassigned
                 ) + "\nReply with \"claim <chore name>\" to cliam one."
-                return _twiml(dusty_with_memory("no_chores", extra=suggestion))
+                return _twiml(dusty_with_memory("no_chores", extra=suggestion, user=user))
             else:
-                return _twiml(dusty_with_memory("no_chores"))
+                return _twiml(dusty_with_memory("no_chores", user=user))
 
     elif intent == "claim":
         chore_name = entities.get("chore", "").strip(). lower()

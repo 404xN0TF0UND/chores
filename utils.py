@@ -57,14 +57,14 @@ DUSTY_RESPONSES = {
         "Congrats. You’re 1% less useless now.",
     ],
     "list": [
-        "Here’s your filth inventory. Let’s clean it up, champ:",
-        "Ah, the glamorous life of domestic servitude. Behold your task list:",
+        "Here’s your filth inventory. Let’s clean it up, champ:\n{extra}",
+        "Ah, the glamorous life of domestic servitude. Behold your task list:\n{extra}",
         "The grime waits for no one. Here’s what’s left:\n{extra}",
-        "These chores won’t clean themselves. Sadly, neither will you.",
+        "These chores won’t clean themselves. Sadly, neither will you.:\n{extra}",
         "Here’s what you still haven’t done. Just saying.:\n{extra}",
         "Dusty's list of disappointment:\n{extra}",
-        "You asked, I delivered. These chores won’t do themselves.",
-        "Brace yourself. Chores ahead:",
+        "You asked, I delivered. These chores won’t do themselves.:\n{extra}",
+        "Brace yourself. Chores ahead:\n{extra}",
     ],
     "add_fail": [
         "Add what? To who? When? Use your words.",
@@ -250,7 +250,9 @@ def dusty_response(template_key_or_text, include_seasonal=True, **kwargs) -> str
         include_seasonal (bool): Include seasonal message if available.
         **kwargs: Variables to inject (e.g., name, chore).
     """
+    
     print(f"[DEBUG] Dusty called with: {template_key_or_text}")
+    print(f"[DEBUG] Selected Dusty template: {message}")
     message = None
 
     if template_key_or_text in DUSTY_RESPONSES:
