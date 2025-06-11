@@ -50,6 +50,15 @@ set_send_sms_function(send_sms)
 
 start_scheduler(db, twilio_client)
 
+
+def notify_admins(chore, user):
+    admins = User.query.filter_by(is_admin=True).all()
+    message = f"{user.name} just completed the chore: {chore.name} (due {chore.due_date})"
+    for admin in admins:
+        if admin.phone:
+            send_sms(admin.phone, f"[Dusty Alert 🚨] {message}")
+
+
 def get_admin_user():
     return User.query.filter_by(name="Ronnie").first()
     
