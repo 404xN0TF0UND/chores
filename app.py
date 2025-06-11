@@ -1,4 +1,5 @@
 import os
+import random
 from flask import Flask, request, render_template, redirect, url_for, flash
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
@@ -106,8 +107,14 @@ def reassign_chore(chore_id):
     # Notify Reassiged User
     assignee = User.query.get(new_user_id)
     if assignee and assignee.phone:
-        message = f"Chore updated: {chore.name} has been assigned to you (due {chore.due_date.strftime('%b %d') if chore.due_date else 'someday'})."
-        send_sms(assignee.phone, message)
+        sass = random.choice([
+            f"Guess who got voluntold? Yep, it's you. '{chore.name}' is now your problem.",
+            f"Congratulations! You've been *upgraded* to the proud owner of chore: {chore.name}.",
+            f"{chore.name} has a new home. Spoiler: it's yours now.",
+            f"{chore.name} was lonely. You've been *carefully selected* to fix that."
+
+        ])
+        send_sms(assignee.phone, f"f[Dusty 🤖] {sass}")
     flash(f"Reassigned chore: {chore.name}", "info")
     return redirect(url_for('index'))
 
