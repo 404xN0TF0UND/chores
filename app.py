@@ -50,7 +50,7 @@ set_send_sms_function(send_sms)
 start_scheduler(db, twilio_client)
 
 def get_admin_user():
-    return User.querry.filter_by(name="Ronnie").first()
+    return User.query.filter_by(name="Ronnie").first()
     
 
 @app.route('/')
