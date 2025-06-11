@@ -481,8 +481,11 @@ def get_completed_chores(user: User) -> list[Chore]:
     """Return list of completed chores assigned to user, most recent first."""
     return Chore.query.filter_by(assigned_to_id=user.id, completed=True).order_by(Chore.completed_at.desc()).all()
 
-def get_unassigned_chores():
-    return Chore.query.filter_by(assigned_to_id=None).all()
+def get_unassigned_chores(limit=None):
+    query = Chore.query.filter_by(assigned_to_id=None, completed=False)
+    if limit:
+        query = query.limit(limit)
+        return query.all()
 
 def get_chore_history(user=None):
     query = ChoreHistory.query.order_by(ChoreHistory.completed_at.desc())
