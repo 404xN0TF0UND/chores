@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="mb-4">Chore History</h2>
+
+<form method="get" class="mb-4">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-4">
+      <label for="user_id" class="form-label">Filter by User</label>
+      <select name="user_id" id="user_id" class="form-select">
+        <option value="">-- All Users --</option>
+        {% for user in users %}
+          <option value="{{ user.id }}" {% if selected_user == user.id %}selected{% endif %}>{{ user.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label for="start_date" class="form-label">Start Date</label>
+      <input type="date" id="start_date" name="start_date" class="form-control" value="{{ start_date or '' }}">
+    </div>
+    <div class="col-md-3">
+      <label for="end_date" class="form-label">End Date</label>
+      <input type="date" id="end_date" name="end_date" class="form-control" value="{{ end_date or '' }}">
+    </div>
+    <div class="col-md-2">
+      <button type="submit" class="btn btn-primary w-100">Filter</button>
+    </div>
+  </div>
+</form>
+
+{% if history %}
+  <div class="row">
+    {% for record in history %}
+    <div class="col-md-6">
+      <div class="card mb-3 bg-secondary text-light">
+        <div class="card-body">
+          <h5 class="card-title">{{ record.chore_name }}</h5>
+          <p class="card-text">
+            Completed by: <strong>{{ record.user.name }}</strong><br>
+            Completed at: {{ record.completed_at.strftime('%Y-%m-%d %H:%M') }}
+          </p>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p>No chore history found for these filters.</p>
+{% endif %}
+
+{% endblock %}

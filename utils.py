@@ -4,8 +4,6 @@ import re
 import random
 import dateparser
 from datetime import datetime, timedelta, date
-# from dateutil.parser import parse, ParserError
-# from dateutil import parser as date_parser
 from typing import Tuple
 from models import Chore, User, ChoreHistory, db
 from sqlalchemy.orm import joinedload
@@ -134,6 +132,21 @@ DUSTY_RESPONSES = {
         "• `greeting` - Get a Dusty-style greeting\n"
         "Use wisely, or Dusty might just roast you instead.",
     ],
+    "delete_invalid": [
+        "Delete what exactly, {name}? Vague threats don't impress me.",
+    ],
+    "deleted": [
+        "Fine. '{extra}' is history. Don't come crawling back.",
+    ],
+    "unassign_invalid": [
+        "You want to unassign what, {name}? Be specific before I unassign your privileges.",
+    ],
+    "unassigned": [
+        "'{extra}' is now up for grabs. You're welcome, {name}.",
+    ],
+    "unauthorized": [
+        "Nice try, {name}. You can't mess with chores that aren't yours.",
+    ],
     "done_invalid": [
         "Done what? You need to specify a chore to mark as done.",
         "Dusty can’t read your mind. Specify the chore you completed.",
@@ -183,6 +196,15 @@ DUSTY_RESPONSES = {
         "You’ve claimed it. Don’t let it go to waste, {name}.",
         "Chore claimed! You’re now the official procrastinator.",
 ],
+
+    "reminder": [
+        "Hey {name}, remember that chore you promised to do? It’s still waiting for you.",
+        "Just a friendly reminder: your chore is due soon. Don’t let Dusty down!",
+        "Dusty here! Your chore is due today. Time to get moving!",
+        "Reminder: You have a chore due today. Don’t make Dusty nag you again.",
+        "Psst, {name}. Your chore is due today. Don’t make me come over there.",
+        "Friendly reminder: your chore is due today. Dusty’s watching!",
+    ],
 }
 
 DUSTY_SNARK = [
@@ -261,6 +283,20 @@ def dusty_response(template_key_or_text, include_seasonal=True, **kwargs) -> str
         roast = random.choice(DUSTY_SNARK)
         formatted += f" 💥 {roast}"
 
+    # Intent-aware sass
+    if "user" in kwargs and isinstance(kwargs["user"], User):
+        prev_intent = kwargs["user"].last_intent
+        prev_seen = kwargs["user"].last_seen
+
+        if prev_seen:
+            minutes_ago = (datetime.utcnow() - prev_seen).total_seconds() / 60
+            if minutes_ago < 5 and random.random() < 0.5:
+                formatted += f" (Back already? We just talked {int(minutes_ago)} minutes ago.)"
+
+        if prev_intent == template_key_or_text and random.random() < 0.5:
+            formatted += " Déjà vu much?"
+    
+    
     return f"[Dusty 🤖] {formatted}"
 
 def get_due_chores_message(session) -> str:
@@ -329,50 +365,6 @@ def get_user_by_phone(phone) :
     
     return User.query.filter_by(phone=phone).first()
 
-# -------------------------------
-# SMS Parsing & NLP
-# -------------------------------
-# This function is used to parse the incoming SMS message and determine the intent.
-
-# def get_intent(message: str) -> Tuple[str, dict]:
-#     """Determine user intent and extract entities from a natural SMS."""
-#     message = message.lower().strip()
-#     entities = {}
-
-#     # Shortcut commands
-#     if message in ["list", "my chores"]:
-#         return "list", {}
-#     if message in ["help", "commands"]:
-#         return "help", {}
-#     if message in ["hello", "hi", "hey", "greetings"]:
-#         return "greeting", {}
-    
-#     # DONE intent
-#     if message.startswith("done"):
-#         match = re.match(r"done\s+(.*)", message)
-#         if match:
-#             entities["chore"] = match.group(1).strip()
-#             return "done", entities
-
-#     # CLAIM intent
-#     if message.startswith("claim"):
-#         match = re.match(r"claim\s+(.*)", message)
-#         if match:
-#             entities["chore"] = match.group(1).strip()
-#             return "claim", entities
-
-#     # ADD intent
-#     add_match = re.match(r"(add|assign)\s+(.*?)\s+to\s+(\w+)\s+due\s+(.*)", message)
-#     if add_match:
-#         _, chore_name, assignee, due_str = add_match.groups()
-#         entities["chore"] = chore_name.strip()
-#         entities["assignee"] = assignee.strip()
-#         due_date = dateparser.parse(due_str)
-#         if due_date:
-#             entities["due_date"] = due_date.date()
-#         return "add", entities
-
-#     return "unknown", {}
 
 def parse_natural_date(text: str) -> datetime | None:
     if not text:
@@ -395,55 +387,6 @@ def parse_natural_date(text: str) -> datetime | None:
     # Fallback: try natural language
     return dateparser.parse(text)
 
-
-
-# def parse_sms(message):
-#     print(f"[NLP DEBUG] Parsing: {message}")
-
-#     message = message.lower().strip()
-
-#     # Normalize some synonyms
-#     message = message.replace("assign", "add").replace("for", "to").replace("on", "due")
-
-#     if not message.startswith("add "):
-#         print("[NLP DEBUG] Not an ADD command")
-#         return None
-
-#     # Token-based heuristics
-#     parts = message[4:].split(" due ")
-
-#     if len(parts) < 2:
-#         print("[NLP DEBUG] Missing due date phrase")
-#         return None
-
-#     before_due, after_due = parts
-#     chore_part = before_due.strip()  # e.g. 'vacuum to Becky'
-
-#     if " to " not in chore_part:
-#         print("[NLP DEBUG] Missing 'to' to identify assignee")
-#         return None
-
-#     chore_name, assignee_name = chore_part.split(" to ", 1)
-#     chore_name = chore_name.strip()
-#     assignee_name = assignee_name.strip()
-
-#     # Handle recurrence if present
-#     recurrence = None
-#     if " every " in after_due:
-#         due_text, recurrence_text = after_due.split(" every ", 1)
-#         recurrence = recurrence_text.strip()
-#     else:
-#         due_text = after_due.strip()
-
-#     # Parse due date naturally
-#     try:
-#         due_date = dateparser.parse(due_date_str)
-#     except Exception as e:
-#         print(f"[NLP DEBUG] Failed to parse due date: {e}")
-#         return None
-
-#     print(f"[NLP DEBUG] Extracted chore='{chore_name}', assignee='{assignee_name}', due='{due_date}', recurrence='{recurrence}'")
-#     return chore_name, assignee_name, due_date, recurrence
 
 def parse_sms_nlp(message: str) -> Tuple[str, dict]:
     """
@@ -588,3 +531,59 @@ def list_user_chores(user, limit=5):
                 .limit(limit).all()
     print(f"[DEBUG] Inside list_user_chores: Found {chores}")
     return chores
+
+
+def send_chore_reminders():
+    today = date.today()
+    chores_due = Chore.query.filter(
+        Chore.due_date == today,
+        Chore.completed == False,
+        Chore.assigned_to_id.isnot(None)
+    ).all()
+
+    if not chores_due:
+        print("[Scheduler] No reminders to send today.")
+        return
+
+    print(f"[Scheduler] Sending {len(chores_due)} reminders...")
+
+    for chore in chores_due:
+        user = User.query.get(chore.assigned_to_id)
+        if user and user.phone:
+            message = dusty_response("reminder", name=user.name, chore=chore.name)
+            try:
+                client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+                client.messages.create(
+                    body=message,
+                    from_=TWILIO_PHONE_NUMBER,
+                    to=user.phone
+                )
+                print(f"[Reminder] Sent to {user.name} ({user.phone}) for chore '{chore.name}'")
+            except Exception as e:
+                print(f"[Reminder Error] Failed to send to {user.phone}: {e}")
+
+
+from datetime import datetime, timedelta
+
+def memory_based_commentary(user, intent):
+    if not user:
+        return ""
+
+    commentary = ""
+
+    # Check time since last interaction
+    if user.last_seen:
+        time_since_last = datetime.utcnow() - user.last_seen
+        if time_since_last > timedelta(days=7):
+            commentary += "Whoa, long time no see! Ready to get those chores done? "
+
+    # Comment on repeated intents
+    if user.last_intent == intent:
+        if intent == "list":
+            commentary += "Again with the list? You sure you’re not just avoiding chores? "
+
+    # Comment if user hasn't completed chores recently
+    if user.total_chores_completed == 0:
+        commentary += "Still no chores done? Dusty’s disappointed. "
+
+    return commentary.strip()

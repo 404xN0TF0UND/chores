@@ -1,27 +1,55 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
+
 {% block content %}
 <h2 class="mb-4">Chore List</h2>
 <div class="row">
-    {% for chore in chores %}
-        <div class="col-md-6">
-            <div class="card mb-3 {% if chore.completed %}bg-success{% else %}bg-secondary{% endif %}">
-                <div class="card-body">
-                    <h5 class="card-title">{{ chore.name }}</h5>
-                    <p class="card-text">
-                        Assigned to: <strong>{{ chore.assigned_to.name }}</strong><br>
-                        Due: {{ chore.due_date.strftime('%Y-%m-%d') if chore.due_date else 'anytime' }}<br>
-                        {% if chore.recurrence %}
-                            Repeats: {{ chore.recurrence }}
-                        {% endif %}
-                    </p>
-                    {% if not chore.completed %}
-                        <a href="{{ url_for('complete_chore', chore_id=chore.id) }}" class="btn btn-light">Mark Complete</a>
-                    {% else %}
-                        <span class="badge bg-light text-dark">Completed</span>
-                    {% endif %}
-                </div>
-            </div>
+  {% for chore in chores %}
+  <div class="col-md-6">
+    <div class="card mb-3 {% if chore.completed %}bg-success{% else %}bg-secondary{% endif %}">
+      <div class="card-body">
+        <h5 class="card-title">{{ chore.name }}</h5>
+        <p class="card-text">
+          Assigned to:
+          <strong>{{ chore.assigned_to.name if chore.assigned_to else 'Unassigned' }}</strong><br>
+          Due: {{ chore.due_date.strftime('%Y-%m-%d') if chore.due_date else 'anytime' }}<br>
+          {% if chore.recurrence %}
+          Repeats: {{ chore.recurrence }}
+          {% endif %}
+        </p>
+
+        {% if not chore.completed %}
+        <a href="{{ url_for('complete_chore', chore_id=chore.id) }}" class="btn btn-light btn-sm">Mark Complete</a>
+        {% else %}
+        <span class="badge bg-light text-dark">Completed</span>
+        {% endif %}
+
+        {% if current_user.is_authenticated and current_user.is_admin %}
+        <!-- Admin Buttons -->
+        <div class="mt-2">
+          <!-- DELETE -->
+          <form action="{{ url_for('delete_chore', chore_id=chore.id) }}" method="POST" style="display:inline;">
+            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+          </form>
+
+          <!-- UNASSIGN -->
+          <form action="{{ url_for('unassign_chore', chore_id=chore.id) }}" method="POST" style="display:inline;">
+            <button type="submit" class="btn btn-warning btn-sm">Unassign</button>
+          </form>
+
+          <!-- REASSIGN -->
+          <form action="{{ url_for('assign_chore', chore_id=chore.id) }}" method="GET" style="display:inline;">
+            <button type="submit" class="btn btn-info btn-sm">Assign</button>
+          </form>
+
+          <!-- SNOOZE -->
+          <form action="{{ url_for('snooze_chore', chore_id=chore.id) }}" method="POST" style="display:inline;">
+            <button type="submit" class="btn btn-secondary btn-sm">Snooze</button>
+          </form>
         </div>
-    {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
 </div>
 {% endblock %}

@@ -1,24 +1,30 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% block title %}Chore History{% endblock %}
+
 {% block content %}
-<h2>Chore History{% if selected_user %} for {{ selected_user }}{% endif %}</h2>
+<div class="container mt-4">
+  <h2 class="text-center mb-4">Chore History</h2>
 
-<form method="get" action="{{ url_for('chore_history') }}">
-<label for="user">Filter by user:</label>
-<select name="user" onchange="this.form.submit()">
-<option value="">-- All --</option>
-{% for user in users %}
-<option value="{{ user }}" {% if user == selected_user %}selected{% endif %}>{{ user }}</option>
-{% endfor %}
-</select>
-</form>
-
-{% if chores %}
-<ul>
-{% for chore in chores %}
-<li><strong>{{ [chore.name](http://chore.name/) }}</strong> (completed by {{ chore.assigned_user }} on {{ chore.updated_at.strftime('%Y-%m-%d %H:%M') }})</li>
-{% endfor %}
-</ul>
-{% else %}
-<p>No completed chores found.</p>
-{% endif %}
+  {% if chores %}
+    <div class="row">
+      {% for chore in chores %}
+        <div class="col-md-4">
+          <div class="card bg-dark text-white mb-4 shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">{{ chore.chore_name }}</h5>
+              <p class="card-text">
+                Completed by: {{ chore.user.name }}<br>
+                On: {{ chore.completed_at.strftime('%Y-%m-%d %I:%M %p') }}
+              </p>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="alert alert-info text-center">
+      No completed chores yet. Clearly everyone’s slacking.
+    </div>
+  {% endif %}
+</div>
 {% endblock %}
