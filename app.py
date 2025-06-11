@@ -253,6 +253,15 @@ def handle_sms():
         # Get Dusty's main message
         base = dusty_response(key_or_text, **kwargs)
 
+        # If message is a list
+        if isinstance(base, list):
+            base = random.choice(base)
+
+        # Add extra content if provided
+        extra = kwargs.get("extra")
+        if extra and "{extra}" not in base and extra not in base:
+            base = f"{base}\n{extra}"
+
         # Generate a short memory-based comment
         memory = memory_based_commentary(user, intent)
 
