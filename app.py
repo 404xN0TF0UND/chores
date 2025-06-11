@@ -407,7 +407,7 @@ def handle_sms():
           lines = [f"- {chore.name} (due {chore.due_date.strftime('%Y-%m-%d') if chore.due_date else 'anytime'})"
                    for chore in chores]
           response = "\n".join(lines)
-          return _twiml(dusty_with_memory("list", extra=suggestion))
+          return _twiml(dusty_with_memory("list", extra=response))
         else:
             # No assigned chores, suggest unassigned
             unassigned = get_unassigned_chores(limit=3)
