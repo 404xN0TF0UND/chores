@@ -425,6 +425,7 @@ def handle_sms():
         else:
             # No assigned chores, suggest unassigned
             unassigned = get_unassigned_chores(limit=3)
+            print(f"[DEBUG] Unassigned chores found: {unassigned}")
             if unassigned:
                 suggestion = "\nYou can claim one of these:\n" + "\n".join(
                     f"-{c.name} (due {c.due_date.strftime('%Y-%m-%d') if c.due_date else 'anytime'})"
