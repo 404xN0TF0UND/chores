@@ -247,14 +247,26 @@ def handle_sms():
     print(f"[INTENT] {intent} | [ENTITIES] {entities}")
 
     def dusty_with_memory(key_or_text, **kwargs):
-        base = dusty_response(key_or_text, **kwargs)
+        user = kwargs.get("user")
+        intent = key_or_text
         
-        # Randomly pick one if it's a list
-        if isinstance(base, list):
-            base = random.choice(base)
+        # Get Dusty's main message
+        base = dusty_response(key_or_text, **kwargs)
 
+        # Generate a short memory-based comment
         memory = memory_based_commentary(user, intent)
+
+        # Track interaction for future sass
+        if user:
+            user.last_intent = intent
+            user.last_seen = datetime.utcnow()
+
+            if intent == "list":
+                user.total_list_requests += 1
+
         return f"{base} {memory}".strip()
+
+
     if not user:
         return _twiml(dusty_with_memory("unauthorized"))
 

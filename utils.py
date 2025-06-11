@@ -625,21 +625,21 @@ def memory_based_commentary(user, intent):
     if not user:
         return ""
 
-    commentary = ""
+    now = datetime.utcnow()
+    minutes_ago = (now - user.last_seen).total_seconds() / 60 if user.last_seen else None
 
-    # Check time since last interaction
-    if user.last_seen:
-        time_since_last = datetime.utcnow() - user.last_seen
-        if time_since_last > timedelta(days=7):
-            commentary += "Whoa, long time no see! Ready to get those chores done? "
+    comments = []
 
-    # Comment on repeated intents
-    if user.last_intent == intent:
-        if intent == "list":
-            commentary += "Again with the list? You sure you’re not just avoiding chores? "
+    # Repeat intent
+    if user.last_intent == intent and random.random() < 0.4:
+        comments.append("Déjà vu much?")
 
-    # Comment if user hasn't completed chores recently
-    if user.total_chores_completed == 0:
-        commentary += "Still no chores done? Dusty’s disappointed. "
+    # Quick return
+    if minutes_ago is not None and minutes_ago < 3 and random.random() < 0.4:
+        comments.append(f"(Back already? We just talked {int(minutes_ago)} minutes ago.)")
 
-    return commentary.strip()
+    # List spamming
+    if intent == "list" and user.total_list_requests > 3 and random.random() < 0.3:
+        comments.append("Again with the list? You sure you’re not just avoiding chores?")
+
+    return random.choice(comments) if comments else ""
