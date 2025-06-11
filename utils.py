@@ -537,7 +537,7 @@ def get_completed_chores(user: User) -> list[Chore]:
 def get_unassigned_chores(limit=None):
     query = Chore.query.filter_by(assigned_to_id=None).order_by(Chore.due_date.asc())
     if limit:
-        query = query.limit(limit).all()
+        query = query.limit(limit)
         return query.all()
 
 def get_chore_history(user=None):
