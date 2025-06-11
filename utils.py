@@ -535,7 +535,7 @@ def get_completed_chores(user: User) -> list[Chore]:
     return Chore.query.filter_by(assigned_to_id=user.id, completed=True).order_by(Chore.completed_at.desc()).all()
 
 def get_unassigned_chores(limit=None):
-    query = Chore.query.filter_by(assigned_to_id=None, completed=False)
+    query = Chore.query.filter_by(assigned_to_id=None).order_by(Chore.due_date)
     if limit:
         query = query.limit(limit)
         return query.all()

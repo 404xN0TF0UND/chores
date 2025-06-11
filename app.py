@@ -337,23 +337,20 @@ def handle_sms():
 
     if intent == "add":
         chore_name = entities.get("chore")
-        
         assignee_name = entities.get("assignee")
-        if not assignee_name:
-            assignee_name = user.name  # default to self if no assignee provided
-        else:
-            assignee_name = get_user_by_name(assignee_name)
-
         due_date = entities.get("due_date")
         recurrence = entities.get("recurrence")
 
-        if not all([chore_name, assignee_name]):
-            return _twiml(dusty_with_memory("add_invalid",user=user.name if user else "there"))
+        if not assignee_name:
+            assignee = user  # default to self if no assignee provided
+        else:
+            assignee = get_user_by_name(assignee_name)
 
-        assignee = get_user_by_name(assignee_name)
-        if not assignee:
-            return _twiml(dusty_with_memory("unknown_user", extra=assignee_name))
-
+       # Validate input
+        if not chore_name or not assignee:
+            return _twiml(dusty_with_memory("add_invalid", user=user.name if user else "there"))
+    
+           
         new_chore = Chore(
             name=chore_name,
             assigned_to_id=assignee.id,
@@ -427,7 +424,7 @@ def handle_sms():
           return _twiml(dusty_with_memory("list", extra=response, user=user))
         else:
             # No assigned chores, suggest unassigned
-            unassigned = get_unassigned_chores()[:3]
+            unassigned = get_unassigned_chores(limit=3)
             if unassigned:
                 suggestion = "\nYou can claim one of these:\n" + "\n".join(
                     f"-{c.name} (due {c.due_date.strftime('%Y-%m-%d') if c.due_date else 'anytime'})"
