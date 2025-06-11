@@ -12,7 +12,7 @@ from twilio.rest import Client
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
-
+from app import send_sms
 twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
 
@@ -561,15 +561,13 @@ def complete_chore_by_name(chore_name, user):
         return chore
     return None
 
-def notify_admins(message):
-    
+def notify_admins(chore, user):
     admins = User.query.filter_by(is_admin=True).all()
+    message = f"{user.name} just completed the chore: {chore.name} (due {chore.due_date})"
     for admin in admins:
-            twilio_client.messages.create(
-            body=f"[Dusty Alert] {message}",
-            from_= TWILIO_PHONE_NUMBER,
-            to=admin.phone
-        )
+        if admin.phone:
+            send_sms(admin.phone, f"[Dusty Alert 🚨] {message}")
+        
 def get_upcoming_chores(user, days=3):
     now = datetime.now()
     upcoming = now + timedelta(days=days)
