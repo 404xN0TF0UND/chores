@@ -470,8 +470,12 @@ def handle_sms():
 
         users = User.query.all()
         for u in users:
-            if u.phone and u.id != user.id:  # skip sender
-                send_sms(u.phone, f"[Dusty 📣] {msg}")
+            if u.phone and u.phone != user.phone and u.phone.startswith("+1"):
+                try:
+                    send_sms(u.phone, f"[Dusty 📣] {msg}")
+                except Exception as e:
+                    print(f"[SMS ERROR] Failed to message {u.name} at {u.phone}: {e}")
+            
 
     return _twiml(dusty_with_memory("broadcast_success", extra="Your message is now everyone’s problem.", user=user))
        
