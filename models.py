@@ -43,6 +43,8 @@ class ChoreHistory(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     times_completed = db.Column(db.DateTime, default=datetime.utcnow)
     completed = db.Column(db.Boolean, default=True)
+    completed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
     def __repr__(self):
         return f"<ChoreHistory {self.chore_name} by {self.user.name}>"
     
