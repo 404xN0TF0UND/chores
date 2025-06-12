@@ -168,7 +168,15 @@ DUSTY_RESPONSES = {
         "Dusty can’t read your mind. Specify the chore you completed. {extra}",
         "You need to tell me which chore you just finished. Dusty’s not a mind reader. {extra}",
     ],
-
+    "broadcast_success": [
+        "Consider it shouted from the virtual rooftops: {extra}",
+        "Message sent. Let’s see who ignores it first.",
+        "Loud and clear. Or at least, loud.",
+    ],
+    "broadcast_invalid": [
+        "You’ve got to give me *something* to say, genius.",
+        "Broadcast what, static?",
+    ],
     "claim_invalid": [
         "Claim what? You need to specify a chore to claim.",
         "Dusty can’t claim chores without a name. Specify one.",
@@ -295,68 +303,6 @@ def dusty_response(template_key_or_text, include_seasonal=True, **kwargs) -> str
     return f"[Dusty 🤖] {formatted}"
 
 
-
-
-# def dusty_response(template_key_or_text, include_seasonal=True, **kwargs) -> str:
-#     """
-#     Generate a Dusty-style response from a category key or literal string.
-
-#     Args:
-#         template_key_or_text (str): Key in DUSTY_RESPONSES or raw response.
-#         include_seasonal (bool): Include seasonal message if available.
-#         **kwargs: Variables to inject (e.g., name, chore).
-#     """
-    
-    
-#     print(f"[DEBUG] Selected Dusty template: {message}")
-#     message = None
-
-#     if template_key_or_text in DUSTY_RESPONSES:
-#         print("[DEBUG] Using category response")
-#         print(f"[DEBUG] Selected Dusty template: {message}")
-#         message = random.choice(DUSTY_RESPONSES[template_key_or_text])
-#     else:
-#         message = template_key_or_text
-#      # Set fallback values for known Dusty template variables
-#     safe_kwargs = {
-#         "name": kwargs.get("name", "there"),
-#         "chore": kwargs.get("chore", "something unpleasant"),
-#         "due": kwargs.get("due", "someday"),
-#         **kwargs    
-#     }  # ensure all keys are present
-    
-#     try:
-#         formatted = message.format(**safe_kwargs)
-#     except KeyError as e:
-#         print(f"[WARNING] Missing format key in Dusty response: {e}")
-#         formatted = message  # fallback to raw if formatting fails
-
-#     # Add seasonal snark occasionally
-#     if include_seasonal:
-#         holiday = seasonal_greeting()
-#         if holiday and random.random() < 0.5:
-#             formatted += f" 🎉 {holiday}"
-
-#     # 15% chance to add snark
-#     if random.random() < 0.15:
-#         roast = random.choice(DUSTY_SNARK)
-#         formatted += f" 💥 {roast}"
-
-#     # Intent-aware sass
-#     if "user" in kwargs and isinstance(kwargs["user"], User):
-#         prev_intent = kwargs["user"].last_intent
-#         prev_seen = kwargs["user"].last_seen
-
-#         if prev_seen:
-#             minutes_ago = (datetime.utcnow() - prev_seen).total_seconds() / 60
-#             if minutes_ago < 5 and random.random() < 0.5:
-#                 formatted += f" (Back already? We just talked {int(minutes_ago)} minutes ago.)"
-
-#         if prev_intent == template_key_or_text and random.random() < 0.5:
-#             formatted += " Déjà vu much?"
-    
-    
-#     return f"[Dusty 🤖] {formatted}"
 
 def get_due_chores_message(session) -> str:
     """
@@ -524,8 +470,18 @@ def parse_sms_nlp(message: str) -> Tuple[str, dict]:
             print("[NLP DEBUG] Add intent pattern did not match.")
             return "add_invalid", {}
 
+    
     # -------------------------------
-    # 5. Fallback
+    # 5. Broadcast Intent (Admin only)
+    # -------------------------------
+    if message_lower.startswith(("broadcast", "announce", "msg all")):
+        return "broadcast", {
+            "message": message.partition(" ")[2].strip()
+        }
+    
+        
+    # -------------------------------
+    # 6. Fallback
     # -------------------------------
     return "unknown", {}   
 # -------------------------------

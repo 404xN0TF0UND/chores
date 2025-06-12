@@ -460,7 +460,20 @@ def handle_sms():
     elif intent == "greetings":
         return _twiml(dusty_with_memory("greetings", name=user.name if user else "there"))
    
-  
+    elif intent == "broadcast":
+        if not user.is_admin:
+            return _twiml(dusty_with_memory("unauthorized", user=user))
+
+        msg = entities.get("message")
+        if not msg:
+            return _twiml(dusty_with_memory("broadcast_invalid", user=user))
+
+        users = User.query.all()
+        for u in users:
+            if u.phone and u.id != user.id:  # skip sender
+                send_sms(u.phone, f"[Dusty 📣] {msg}")
+
+    return _twiml(dusty_with_memory("broadcast_success", extra="Your message is now everyone’s problem.", user=user))
        
      # Unknown or unsupported intent
     return _twiml(dusty_with_memory("unknown", name=user.name if user else "there"))
