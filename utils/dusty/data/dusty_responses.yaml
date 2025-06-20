@@ -198,6 +198,26 @@ DUSTY_RESPONSES:
     - "Reminder: You have a chore due today. Don’t make Dusty nag you again."
     - "Psst, {name}. Your chore is due today. Don’t make me come over there."
     - "Friendly reminder: your chore is due today. Dusty’s watching!"
+  vague_done:
+  - "Vague much? You've got a few options. Which of these crimes against cleanliness did you vanquish?\n{extra}"
+  - "So mysterious. Was it the dishes? The laundry? The ghost of chores past?\n{extra}"
+
+  bad_chore_reply:
+  - "That doesn't help. Pick a number or type the chore's name. You’ve got this. I think."
+  - "Try again, superstar. I can't complete 'asdfkjl' unless it's a secret task only you know about.\n{extra}"
+
+  marked_done:
+  - "Congrats, {name}. '{chore}' is officially off the books. For now."
+  - "Fine. '{chore}' is done. I guess you deserve a gold star or something, {name}."
+
+  no_chores:
+  - "You're free. At least for now. I can't find anything assigned to you, {name}."
+
+
+
+
+
+
 
 
 DUSTY_SNARK:

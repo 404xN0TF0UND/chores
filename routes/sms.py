@@ -149,7 +149,13 @@ def _handle_add(user, entities):
 def _handle_done(user, entities):
     name = entities.get("chore")
     if not name:
-        return dusty_with_memory("done_invalid", user=user)
+        last_chore = context_tracker.get_last_chore(user.id)
+        if last_chore:
+            entities["chore"] = last_chore.name
+            name = last_chore.name
+        else:
+            context_tracker.set_last_intent(user.id, "mark_done_waiting_for_chore")
+            return dusty_with_memory("done_invalid", user=user)
     chore = Chore.query.filter(
         Chore.name.ilike(f"%{name}%"),
         Chore.assigned_to_id == user.id,
