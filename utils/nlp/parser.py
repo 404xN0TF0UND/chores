@@ -35,22 +35,26 @@ def parse_multiple_intents(message: str, sender_name: str = "") -> List[Tuple[st
     if "add" in message or "assign" in message:
         msg = message.replace("assign", "add")
 
-        # Step 1: Extract due date
-        due_date = parse_natural_date(msg)
-        if due_date:
-            msg = re.sub(r"due\s+\w+", "", msg)
+        # Step 1: Extract due date string
+        due_match = re.search(r"due\s+([a-zA-Z0-9\s]+)", msg)
+        due_str = due_match.group(1).strip() if due_match else None
+        due_date = parse_natural_date(due_str) if due_str else None
+        if due_str:
+            msg = re.sub(r"due\s+" + re.escape(due_str), "", msg)
 
-        # Step 2: Extract assignee
-        assignee = None
+        # Step 2: Extract assignee (to/for)
         assignee_match = re.search(r"(?:to|for)\s+(\w+)", msg)
-        if assignee_match:
-            assignee = assignee_match.group(1).strip()
-            msg = re.sub(r"(?:to|for)\s+\w+", "", msg)
+        assignee = assignee_match.group(1).strip() if assignee_match else None
+        if assignee:
+            msg = re.sub(r"(?:to|for)\s+" + re.escape(assignee), "", msg)
 
         assignee = resolve_alias(assignee, sender_name)
 
-        # Step 3: Extract chore
-        chore = re.sub(r"add\s+", "", msg).strip()
+        # Step 3: Extract chore (what’s left after “add”)
+        chore = msg
+        if chore.startswith("add "):
+            chore = chore[4:]
+        chore = chore.strip()
 
         intents.append(("add", {
             "chore": chore,
@@ -87,5 +91,5 @@ def parse_multiple_intents(message: str, sender_name: str = "") -> List[Tuple[st
     else:
         intents.append(("unknown", {}))
 
-    return intents
+    return intents   
      
