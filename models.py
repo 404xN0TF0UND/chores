@@ -8,6 +8,10 @@ class User(db.Model):
     name = db.Column(db.String(50), nullable=False)
     phone = db.Column(db.String(20), unique=True, nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
+    fatigue_level = db.Column(db.Integer, default=0)  # Goes up with chore load or rapid requests
+    last_roast = db.Column(db.DateTime)
+    total_chores_assigned = db.Column(db.Integer, default=0)
+    last_unassigned_seen = db.Column(db.Integer, default=0)
     
     # New memory fields
     total_chores_completed = db.Column(db.Integer, default=0)

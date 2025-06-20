@@ -18,7 +18,7 @@
         </p>
 
         {% if not chore.completed %}
-        <a href="{{ url_for('complete_chore', chore_id=chore.id) }}" class="btn btn-light btn-sm">Mark Complete</a>
+        <a href="{{ url_for('history.complete_chore', chore_id=chore.id) }}" class="btn btn-light btn-sm">Mark Complete</a>
         {% else %}
         <span class="badge bg-light text-dark">Completed</span>
         {% endif %}
@@ -27,17 +27,17 @@
         <!-- Admin Buttons -->
         <div class="mt-2">
           <!-- DELETE -->
-          <form action="{{ url_for('delete_chore', chore_id=chore.id) }}" method="POST" style="display:inline;">
+          <form action="{{ url_for('manage.delete_chore', chore_id=chore.id) }}" method="POST" style="display:inline;">
             <button type="submit" class="btn btn-danger btn-sm">Delete</button>
           </form>
 
           <!-- UNASSIGN -->
-          <form action="{{ url_for('unassign_chore', chore_id=chore.id) }}" method="POST" style="display:inline;">
+          <form action="{{ url_for('manage.unassign_chore', chore_id=chore.id) }}" method="POST" style="display:inline;">
             <button type="submit" class="btn btn-warning btn-sm">Unassign</button>
           </form>
 
           <!-- REASSIGN -->
-          <form action="{{ url_for('reassign_chore', chore_id=chore.id) }}" method="POST" style="display:inline;">
+          <form action="{{ url_for('manage.reassign_chore', chore_id=chore.id) }}" method="POST" style="display:inline;">
             <select name="user_id" class="form-select form-select-sm d-inline w-auto">
               {% for u in users %}
                 <option value="{{ u.id }}" {% if chore.assigned_to_id == u.id %}selected{% endif %}>{{ u.name }}</option>
@@ -47,7 +47,7 @@
           </form>
 
           <!-- SNOOZE -->
-          <form action="{{ url_for('snooze_chore', chore_id=chore.id) }}" method="POST" style="display:inline;">
+          <form action="{{ url_for('misc.snooze_chore', chore_id=chore.id) }}" method="POST" style="display:inline;">
             <button type="submit" class="btn btn-secondary btn-sm">Snooze</button>
           </form>
         </div>

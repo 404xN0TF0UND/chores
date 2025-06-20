@@ -1,0 +1,225 @@
+
+
+DUSTY_RESPONSES:
+  greetings: 
+    - "Ah, greetings {name}. I trust you've been diligently avoiding your duties."
+    - "Oh look, {name} decided to grace me with their presence."
+    - "Hey {name}. What do you want *this* time?"
+    - "Well, if it isn't {name}. Here to procrastinate or actually do something?"
+    - "Hello {name}. I hope you're ready to face the mountain of chores you've ignored."
+    - "Greetings, {name}. Dusty is here to remind you that chores don’t do themselves."
+    - "Well, well, if it isn’t {name}. Ready to tackle your responsibilities or just here to chat?"
+    - "Ah, {name}. The procrastinator returns. What’s on your mind?"
+    - "Hello {name}. I see you’ve come to face the music. Or at least, the dust."
+    - "Hey {name}. I hope you’re ready to get your hands dirty. Literally."
+    - "Well, if it isn’t {name}. Here to avoid chores or just looking for excuses?"
+    - "Greetings, {name}. Dusty is here to remind you that chores don’t do themselves."
+    
+  add:
+    - "Another one? You sure know how to live on the edge of responsibility."
+    - "Another task? You’re relentless. I’ll add it to the pile."
+    - "Fine. I’ll write it down. Just don’t expect me to do it."
+    - "Oh joy, more work. I’m thrilled."
+    - "You humans sure love making messes for each other."
+    - "Added. One more brick in the wall of responsibility."
+    - "You keep assigning chores like it's a hobby."
+    - "Fine. I’ll add it. But I won’t be happy about it."
+    - "Chore added. Because obviously no one else was going to do it."
+    
+  assigned: 
+    - "You’ve been *blessed* with a new chore: {extra}"
+    - "Guess who’s got more work? You. {extra}"
+    - "Assigned: {extra}. Try not to mess it up."
+    - "Another one for your growing list: {extra}"
+    
+  done:
+    - "Well look at you go. Another one bites the dust. 🧹"
+    - "You did a thing! Gold star for you. ⭐"
+    - "If I had hands, I'd slow clap. Nice work."
+    - "Done already? Show-off."
+    - "Another one off the list. You're making the rest of us look bad."
+    - "You’ve earned a break. Don’t get used to it."
+    - "It’s about time. I was starting to lose hope."
+    - "Congrats. You’re 1% less useless now."
+    
+  list:
+    - "Here’s your filth inventory. Let’s clean it up, champ:\n{extra}"
+    - "Ah, the glamorous life of domestic servitude. Behold your task list:\n{extra}"
+    - "The grime waits for no one. Here’s what’s left:\n{extra}"
+    - "These chores won’t clean themselves. Sadly, neither will you.:\n{extra}"
+    - "Here’s what you still haven’t done. Just saying.:\n{extra}"
+    - "Dusty's list of disappointment:\n{extra}"
+    - "You asked, I delivered. These chores won’t do themselves.:\n{extra}"
+    - "Brace yourself. Chores ahead:\n{extra}"
+    
+  add_fail: 
+    - "Add what? To who? When? Use your words."
+    - "If you're trying to add a chore, maybe try being clearer."
+    - "That add command was about as helpful as a chocolate teapot."
+    
+  unrecognized_user: 
+    - "Hmm, you’re not on the list. Dusty only works for the chosen few."
+    - "Access denied. You might want to get adopted by someone on the list."
+    
+  unassigned: 
+    - "You can’t claim a chore that doesn’t exist. Try again."
+    - "No unassigned chores found. Dusty’s not a miracle worker."
+    - "Claim what? There are no chores waiting for you."
+    - "You can’t claim a chore that’s already taken. Try harder."
+    - "No unclaimed chores available. Dusty’s not a charity."
+    - "You’re trying to claim a chore that’s already claimed. Nice try."
+    - "Claiming a chore that’s already assigned? Dusty doesn’t think so."
+    - "You can’t claim a chore that’s already in progress. Try again later."
+    - "No unclaimed chores available. Dusty’s not a miracle worker."
+    - "You can’t claim a chore that’s already taken. Nice try."
+    - "Claiming a chore that’s already assigned? Dusty doesn’t think so."
+    
+  unknown: 
+    - "Dusty didn’t quite get that. Maybe try again?"
+    - "Dusty didn’t quite get that. Try again, but with words that make sense."
+    - "Are you speaking chore-ese? Because I don’t speak that."
+    - "If you’re trying to confuse me, it’s working."
+    - "Unclear. Uninspired. Unexecuted. Try again."
+    - "Nope. Dusty’s circuits didn’t compute that nonsense."
+    - "Whatever that was, it wasn’t a chore command."
+    - "Your message was like a mystery novel — and Dusty doesn’t do fiction."
+    - "I couldn't quite make sense of that. Try 'add dishes to Becky due Friday' or just cry quietly."
+    - "Dusty does not compute. Try again with actual instructions."
+    - "That's not a valid chore request, unless you meant to confuse me. In which case, congrats."
+    
+  claim: 
+    - "Claimed! You’re now responsible for this chore. Don’t mess it up."
+    - "You’ve claimed it. Now don’t make me regret it."
+    - "Chore claimed. You’re on the hook now, {name}."
+    - "You’ve got it. Don’t think you can back out now."
+    - "Claimed! You’re now the proud owner of this chore. Enjoy."
+    - "Congratulations! You’ve just inherited a chore. Lucky you."
+    - "You’ve claimed it. Now get to work before I change my mind."
+    - "Chore claimed. You’re now the designated slacker."
+    - "You’ve claimed it. Don’t let it go to waste, {name}."
+    - "Chore claimed! You’re now the official procrastinator."
+    
+
+  help: 
+    - "Need help? Here’s what Dusty can do:\n"
+    - "• `add <chore> to <user> due <date>` - Assign a chore\n"
+    - "• `done <chore>` - Mark a chore as completed\n"
+    - "• `claim <chore>` - Claim an unassigned chore\n"
+    - "• `list` - Show your assigned chores\n"
+    - "• `help` - Show this message\n"
+    - "• `greeting` - Get a Dusty-style greeting\n"
+    - "Remember, Dusty is here to help... or roast you. Your choice."
+    - "Dusty’s help desk is open! Here’s what you can do:\n"
+    - "• `add <chore> to <user> due <date>` - Assign a chore to someone\n"
+    - "• `done <chore>` - Mark a chore as done\n"
+    - "• `claim <chore>` - Claim an unassigned chore\n"
+    - "• `list` - List your assigned chores\n"
+    - "• `help` - Show this message\n"
+    - "• `greeting` - Get a Dusty-style greeting\n"
+    - "Use wisely, or Dusty might just roast you instead."
+    
+  delete_invalid: 
+    - "Delete what exactly, {name}? Vague threats don't impress me."
+    
+  deleted: 
+    - "Fine. '{extra}' is history. Don't come crawling back."
+    
+  unassign_invalid: 
+    - "You want to unassign what, {name}? Be specific before I unassign your privileges."
+    
+  unassigned: 
+    - "'{extra}' is now up for grabs. You're welcome, {name}."
+    
+  unauthorized: 
+    - "Nice try, {name}. You can't mess with chores that aren't yours."
+    
+  done_invalid: 
+    - "Done what? You need to specify a chore to mark as done."
+    - "Dusty can’t read your mind. Specify the chore you completed."
+    - "You need to tell me which chore you just finished. Dusty’s not a mind reader."
+    
+  no_chore: 
+    - "You haven’t specified a chore to mark as done. Try again. {extra}"
+    - "Dusty can’t mark a chore as done without a name. Specify one. {extra}"
+    - "You need to tell me which chore you just finished. Dusty’s not a mind reader. {extra}"
+    - "Invalid done request. Specify the chore you want to mark as done. {extra}"
+    - "You can’t mark a chore as done without naming it. Try again. {extra}"
+    - "Dusty needs a chore name to process your request. Specify one. {extra}"
+    - "Dusty can’t read your mind. Specify the chore you completed. {extra}"
+    - "You need to tell me which chore you just finished. Dusty’s not a mind reader. {extra}"
+    
+  broadcast_success: 
+    - "Consider it shouted from the virtual rooftops: {extra}"
+    - "Message sent. Let’s see who ignores it first."
+    - "Loud and clear. Or at least, loud."
+    
+  broadcast_invalid: 
+    - "You’ve got to give me *something* to say, genius."
+    - "Broadcast what, static?"
+    
+  claim_invalid: 
+    - "Claim what? You need to specify a chore to claim."
+    - "Dusty can’t claim chores without a name. Specify one."
+    - "You need to tell me which chore you want to claim. Dusty’s not a psychic."
+    - "Invalid claim request. Specify the chore you want to claim."
+    - "You can’t claim a chore without naming it. Try again."
+    - "Dusty needs a chore name to process your claim. Specify one."
+    - "Invalid claim command. You must specify a chore to claim."
+    - "You can’t claim a chore without a name. Specify one."
+    - "Dusty needs a chore name to process your claim. Specify one."
+    
+  claim_fail: 
+    - "No such chore to claim. Try again with a valid one."
+    - "That chore is already claimed. Try another one."
+    - "Claim failed. Either the chore doesn’t exist or it’s already taken."
+    - "You can’t claim that chore. It’s already assigned to someone else."
+    - "Claim failed. Either the chore is already taken or doesn’t exist."
+    - "That chore is already claimed. Try claiming an unassigned one."
+    - "Claim failed. Either the chore is already taken or doesn’t exist."
+    - "You can’t claim that chore. It’s already assigned to someone else."
+    
+  claim_success: 
+    - "Claimed! You’re now responsible for this chore. Don’t mess it up."
+    - "You’ve claimed it. Now don’t make me regret it."
+    - "Chore claimed. You’re on the hook now, {name}."
+    - "You’ve got it. Don’t think you can back out now."
+    - "Claimed! You’re now the proud owner of this chore. Enjoy."
+    - "Congratulations! You’ve just inherited a chore. Lucky you."
+    - "You’ve claimed it. Now get to work before I change my mind."
+    - "Chore claimed. You’re now the designated slacker."
+    - "You’ve claimed it. Don’t let it go to waste, {name}."
+    - "Chore claimed! You’re now the official procrastinator."
+
+
+  reminder: 
+    - "Hey {name}, remember that chore you promised to do? It’s still waiting for you."
+    - "Just a friendly reminder: your chore is due soon. Don’t let Dusty down!"
+    - "Dusty here! Your chore is due today. Time to get moving!"
+    - "Reminder: You have a chore due today. Don’t make Dusty nag you again."
+    - "Psst, {name}. Your chore is due today. Don’t make me come over there."
+    - "Friendly reminder: your chore is due today. Dusty’s watching!"
+
+
+DUSTY_SNARK:
+    - "Wow, you're actually doing a chore? I'm shocked."
+    - "Another one bites the dust. Literally."
+    - "Impressive. You’ve done something for once."
+    - "If chores were trophies, you'd almost deserve one."
+    - "Keep this up and I’ll consider updating your résumé."
+    - "I’m not saying you’re lazy, but your chores have their own zip code."
+    - "Congratulations! You’ve achieved the bare minimum."
+    - "I’d help, but I’m busy judging your life choices."
+    - "You must be a magician, because you just made your chores disappear!"
+    - "You know, if you spent as much time cleaning as you do texting me, we’d be done by now."
+    - "You call that cleaning? I’ve seen better results from a tornado."
+    - "If I had a nickel for every chore you’ve done, I’d still be broke."
+    - "I’m not saying you’re bad at chores, but I’ve seen better from toddlers."
+    - "If procrastination were an Olympic sport, you’d win gold."
+    - "You’re like a tornado of laziness. You leave chaos in your wake."
+
+
+HOLIDAY_SNARK:
+     "01-01": "New year, same dirty house. Chop chop!"
+     "07-04": "Time to declare independence from laziness."
+     "12-25": "Even Santa makes his elves clean up."
+
