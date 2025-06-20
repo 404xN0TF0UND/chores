@@ -140,4 +140,7 @@ def memory_based_commentary(user, intent):
     elif user.fatigue_level == 0 and intent == "done" and random.random() < 0.3:
         comments.append (" Well look at you. One chore and already back to couch mode?")
 
-    return " ".join(comments).strip()
+    if comments:
+        return random.choice(comments).strip()
+    
+    return " "
