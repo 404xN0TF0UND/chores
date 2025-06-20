@@ -1,34 +1,61 @@
-# utils/nlp/parser.py
 
 import re
 from datetime import datetime
+from typing import List, Tuple, Optional
 import dateparser
-from typing import List, Tuple
 
-def parse_natural_date(text: str) -> datetime | None:
+# ---- Helper Functions ----
+
+def parse_natural_date(text: str) -> Optional[datetime]:
+    """Convert natural date phrases like 'today' or 'next Friday' into a datetime."""
     if not text:
         return None
     dt = dateparser.parse(text, settings={'PREFER_DATES_FROM': 'future'})
     return dt if isinstance(dt, datetime) else None
 
-def parse_multiple_intents(message: str) -> List[Tuple[str, dict]]:
+def extract_after_keyword(text: str, keyword: str) -> Optional[str]:
+    match = re.search(rf"{keyword}\s+(.+)", text)
+    return match.group(1).strip() if match else None
+
+def extract_between_keywords(text: str, start: str, end: str) -> Optional[str]:
+    match = re.search(rf"{start}\s+(.*?)\s+{end}", text)
+    return match.group(1).strip() if match else None
+
+def resolve_alias(assignee: Optional[str], sender_name: str) -> str:
+    if assignee in ["me", "myself", "i", None]:
+        return sender_name.lower()
+    return assignee.lower()
+
+# ---- Main Parser ----
+
+def parse_multiple_intents(message: str, sender_name: str = "") -> List[Tuple[str, dict]]:
     message = message.strip().lower()
     intents = []
 
     if "add" in message or "assign" in message:
-        # Extract core parts
-        chore = extract_between_keywords(message, "add", "to") or extract_after_keyword(message, "add")
-        assignee = extract_after_keyword(message, "to")
-        due = parse_natural_date(message)
+        msg = message.replace("assign", "add")
 
-        # Clean chore name (remove due phrases)
-        if chore:
-            chore = clean_chore_name(chore)
+        # Step 1: Extract due date
+        due_date = parse_natural_date(msg)
+        if due_date:
+            msg = re.sub(r"due\s+\w+", "", msg)
+
+        # Step 2: Extract assignee
+        assignee = None
+        assignee_match = re.search(r"(?:to|for)\s+(\w+)", msg)
+        if assignee_match:
+            assignee = assignee_match.group(1).strip()
+            msg = re.sub(r"(?:to|for)\s+\w+", "", msg)
+
+        assignee = resolve_alias(assignee, sender_name)
+
+        # Step 3: Extract chore
+        chore = re.sub(r"add\s+", "", msg).strip()
 
         intents.append(("add", {
             "chore": chore,
             "assignee": assignee,
-            "due_date": due
+            "due_date": due_date
         }))
 
     elif "done" in message or "complete" in message:
@@ -54,28 +81,11 @@ def parse_multiple_intents(message: str) -> List[Tuple[str, dict]]:
         msg = extract_after_keyword(message, "broadcast")
         intents.append(("broadcast", {"message": msg}))
 
-    elif "help" in message:
-        intents.append(("help", {}))
-
-    elif "hi" in message or "hello" in message or "dusty" in message:
+    elif any(greet in message for greet in ["hi", "hello", "dusty"]):
         intents.append(("greetings", {}))
 
     else:
         intents.append(("unknown", {}))
 
     return intents
-
-def extract_after_keyword(text: str, keyword: str) -> str | None:
-    match = re.search(rf"{keyword}\s+(.+)", text)
-    return match.group(1).strip() if match else None
-
-def extract_between_keywords(text: str, start: str, end: str) -> str | None:
-    match = re.search(rf"{start}\s+(.*?)\s+{end}", text)
-    return match.group(1).strip() if match else None
-
-def clean_chore_name(raw: str) -> str:
-    raw = re.sub(r"\bdue\s+\w+", "", raw)            # "due today"
-    raw = re.sub(r"\bdue\s+on\s+\w+", "", raw)       # "due on Friday"
-    raw = re.sub(r"\bby\s+\w+", "", raw)              # "by Monday"
-    return raw.strip()
- 
+     
