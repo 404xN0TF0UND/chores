@@ -75,7 +75,7 @@ def handle_sms():
         for k, v in previous["entities"].items():
             entities.setdefault(k, v)
 
-    context_tracker.set(from_number, intent, intent, entities)
+    context_tracker.set(from_number, intent, entities)
 
     # Memory injection
     if context.last_intent and intent == "unknown":
