@@ -2,11 +2,8 @@
 
 import re
 from datetime import datetime
-from typing import List, Tuple
 import dateparser
-from models import User
-
-# --- Natural Language Utilities ---
+from typing import List, Tuple
 
 def parse_natural_date(text: str) -> datetime | None:
     if not text:
@@ -14,16 +11,20 @@ def parse_natural_date(text: str) -> datetime | None:
     dt = dateparser.parse(text, settings={'PREFER_DATES_FROM': 'future'})
     return dt if isinstance(dt, datetime) else None
 
-# --- Intent Parser ---
-
-def parse_multiple_intents(message: str, sender: User | None = None) -> List[Tuple[str, dict]]:
+def parse_multiple_intents(message: str) -> List[Tuple[str, dict]]:
     message = message.strip().lower()
     intents = []
 
     if "add" in message or "assign" in message:
-        chore = extract_chore(message)
-        assignee = extract_assignee(message, sender)
-        due = extract_due_date(message)
+        # Extract core parts
+        chore = extract_between_keywords(message, "add", "to") or extract_after_keyword(message, "add")
+        assignee = extract_after_keyword(message, "to")
+        due = parse_natural_date(message)
+
+        # Clean chore name (remove due phrases)
+        if chore:
+            chore = clean_chore_name(chore)
+
         intents.append(("add", {
             "chore": chore,
             "assignee": assignee,
@@ -53,7 +54,10 @@ def parse_multiple_intents(message: str, sender: User | None = None) -> List[Tup
         msg = extract_after_keyword(message, "broadcast")
         intents.append(("broadcast", {"message": msg}))
 
-    elif any(greet in message for greet in ("hi", "hello", "dusty")):
+    elif "help" in message:
+        intents.append(("help", {}))
+
+    elif "hi" in message or "hello" in message or "dusty" in message:
         intents.append(("greetings", {}))
 
     else:
@@ -61,31 +65,17 @@ def parse_multiple_intents(message: str, sender: User | None = None) -> List[Tup
 
     return intents
 
-# --- Helpers ---
-
 def extract_after_keyword(text: str, keyword: str) -> str | None:
     match = re.search(rf"{keyword}\s+(.+)", text)
     return match.group(1).strip() if match else None
 
-def extract_chore(text: str) -> str | None:
-    match = re.search(r"(?:add|assign)\s+(.+?)(?:\s+(to|for)\s+|$)", text)
+def extract_between_keywords(text: str, start: str, end: str) -> str | None:
+    match = re.search(rf"{start}\s+(.*?)\s+{end}", text)
     return match.group(1).strip() if match else None
 
-def extract_assignee(text: str, sender: User | None) -> str | None:
-    match = re.search(r"(?:to|for)\s+([a-z\s]+)", text)
-    if not match:
-        return None
-
-    raw = match.group(1).strip()
-    name_token = raw.split()[0]  # Only take the first token
-
-    if name_token in ("me", "myself") and sender:
-        return sender.name.lower()
-    return name_token
-
-def extract_due_date(text: str) -> datetime | None:
-    match = re.search(r"due\s+(.*)", text)
-    if match:
-        return parse_natural_date(match.group(1).strip())
-    return None
-       
+def clean_chore_name(raw: str) -> str:
+    raw = re.sub(r"\bdue\s+\w+", "", raw)            # "due today"
+    raw = re.sub(r"\bdue\s+on\s+\w+", "", raw)       # "due on Friday"
+    raw = re.sub(r"\bby\s+\w+", "", raw)              # "by Monday"
+    return raw.strip()
+ 
