@@ -200,8 +200,8 @@ def _handle_claim(user, entities):
     if chore:
         chore.assigned_to_id = user.id
         db.session.commit()
-        return dusty_with_memory("claim", chore=chore.name, name=user.name)
-    return dusty_with_memory("claim_fail", chore=name, name=user.name)
+        return dusty_with_memory("claim", chore=chore.name, name=user.name, user=user)
+    return dusty_with_memory("claim_fail", chore=name, name=user.name, user=user)
 
 
 def _handle_delete(user, entities):
