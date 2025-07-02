@@ -14,6 +14,9 @@ from utils.nlp import parse_multiple_intents
 from services.twilio_tools import send_sms
 from utils.context import ContextTracker, ConversationContext
 from utils.context.store import conversation_context
+from utils.context.follow_up import resolve_follow_up
+from utils.dusty.commentary import generate_commentary
+
 
 sms_bp = Blueprint("sms", __name__)
 context_tracker = ConversationContext()
@@ -59,10 +62,16 @@ def handle_sms():
             "Dusty detected overachievement. Auto-throttling enabled.",
         ])))
 
-    parsed_intents = parse_multiple_intents(incoming_msg)
+    parsed_intents = parse_multiple_intents(incoming_msg, sender=user.name, aliases={"me": user.name.lower()},context=context)
     print(f"[MULTI-INTENT PARSE] {parsed_intents}")
-    if not parsed_intents:
-        return _twiml(dusty_response("unknown"))
+    if not parsed_intents or parsed_intents[0][0] == "unknown":
+        print("[FOLLOW-UP CHECK] Trying to resolve as follow-up...")
+        followup_intent, followup_entities = resolve_follow_up(incoming_msg, context_tracker, user.name)
+        if followup_intent != "unknown":
+            parsed_intents = [(followup_intent, followup_entities)]
+        else:
+            return _twiml(dusty_response("unknown"))
+
 
     final_replies = []
     previous = context_tracker.get(from_number)
@@ -112,9 +121,39 @@ def handle_sms():
             reply = dusty_with_memory("help", name=user.name)
         elif intent == "greetings":
             reply = dusty_with_memory("greetings", name=user.name)
-        else:
-            reply = dusty_with_memory("unknown", name=user.name)
+        elif intent == "set_tone":
+            new_tone = entities.get("tone")
+            if new_tone in ["gentle", "sarcastic", "default"]:
+                roast = ""
+                if user.tone_preference != new_tone:
+            # Track change
+                    user.last_tone_change = datetime.utcnow()
+                    user.tone_change_count = (user.tone_change_count or 0) + 1
 
+                # Roast conditions
+                    if user.tone_change_count > 2 and new_tone == "gentle":
+                        roast = " (Did someone get their feelings hurt?)"
+                    elif new_tone == "sarcastic" and random.random() < 0.3:
+                        roast = " (Prepare for maximum sass mode.)"
+                    elif new_tone == "default" and random.random() < 0.3:
+                        roast = " (Back to basics. Coward.)"
+
+                user.tone_preference = new_tone
+                reply = dusty_response(
+                    f"Tone set to {new_tone}.{roast}",
+                    user=user
+                )
+            else:
+                reply = dusty_response(
+                    "I couldn't recognize that tone. Try 'gentle', 'sarcastic', or 'default'.",
+                    user=user
+                )
+
+        # ✏️ Optional snarky comment
+        if intent not in ["help", "greetings", "list"] and random.random() < 0.4:
+            comment = generate_commentary(context, user, intent, entities)
+            reply += f"\n\n[Dusty 🤖] {comment}"
+        
         context.update(intent, entities)
         final_replies.append(reply)
 

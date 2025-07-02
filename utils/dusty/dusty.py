@@ -26,41 +26,81 @@ def seasonal_greeting() -> str | None:
     md = today.strftime("%m-%d")
     return HOLIDAY_SNARK.get(md)
 
+
+
+
 def dusty_response(template_key_or_text, include_seasonal=True, **kwargs) -> str:
-    """Generate a Dusty-style response from a category key or literal string, with memory-aware sarcasm."""
-    print(f"[DEBUG] Dusty called with: {template_key_or_text}")
+        """Generate a Dusty-style response with personality, memory, fatigue-based snark, and now per-user tone."""
+        user = kwargs.get("user")
+        tone = kwargs.get("tone", "default")
 
-    if template_key_or_text in DUSTY_RESPONSES:
-        print("[DEBUG] Using category response")
-        message = random.choice(DUSTY_RESPONSES[template_key_or_text])
-        print(f"[DEBUG] Selected Dusty template: {message}")
-    else:
-        message = template_key_or_text
+        if user and hasattr(user, "tone_preference"):
+            tone = user.tone_preference or "default"
 
-    # Safe formatting vars
-    safe_kwargs = {
-        "name": kwargs.get("name", "there"),
-        "chore": kwargs.get("chore", "something unpleasant"),
-        "due": kwargs.get("due", "someday"),
-        **kwargs,
-    }
+        if tone == "random":
+            tone = random.choice(["default", "gentle", "sarcastic"])
 
-    try:
-        formatted = message.format(**safe_kwargs)
-    except KeyError as e:
-        print(f"[WARNING] Missing format key in Dusty response: {e}")
-        formatted = message  # fallback
+        # Select base message
+        if template_key_or_text in DUSTY_RESPONSES:
+            responses = DUSTY_RESPONSES[template_key_or_text]
+            if isinstance(responses, dict):
+                message = random.choice(responses.get(tone, responses.get("default", ["..."])))
+            elif isinstance(responses, list):
+                message = random.choice(responses)
+            else:
+                message = str(responses)
+            print(f"[DEBUG] Selected Dusty template: {message}")
+        else:
+            message = template_key_or_text  # literal message
+
+        # Format safely
+        safe_kwargs = {
+            "name": kwargs.get("name", "there"),
+            "chore": kwargs.get("chore", "something unpleasant"),
+            "due": kwargs.get("due", "someday"),
+            **kwargs,
+        }
+        try:
+            formatted = message.format(**safe_kwargs)
+        except KeyError as e:
+            print(f"[WARNING] Missing format key in Dusty response: {e}")
+            formatted = message
+
+
+    # """Generate a Dusty-style response from a category key or literal string, with memory-aware sarcasm."""
+    # print(f"[DEBUG] Dusty called with: {template_key_or_text}")
+
+    # if template_key_or_text in DUSTY_RESPONSES:
+    #     print("[DEBUG] Using category response")
+    #     message = random.choice(DUSTY_RESPONSES[template_key_or_text])
+    #     print(f"[DEBUG] Selected Dusty template: {message}")
+    # else:
+    #     message = template_key_or_text
+
+    # # Safe formatting vars
+    # safe_kwargs = {
+    #     "name": kwargs.get("name", "there"),
+    #     "chore": kwargs.get("chore", "something unpleasant"),
+    #     "due": kwargs.get("due", "someday"),
+    #     **kwargs,
+    # }
+
+    # try:
+    #     formatted = message.format(**safe_kwargs)
+    # except KeyError as e:
+    #     print(f"[WARNING] Missing format key in Dusty response: {e}")
+    #     formatted = message  # fallback
 
     # --- Memory-based sass injection ---
-    user = kwargs.get("user")
-    if user:
+        user = kwargs.get("user")
+        if user:
         # Sarcasm from fatigue
-        if getattr(user, "fatigue_level", 0) > 5:
-            formatted += " You alright? You look one chore away from collapse."
+            if getattr(user, "fatigue_level", 0) > 5:
+                formatted += " You alright? You look one chore away from collapse."
 
         # Roast chore obsession
-        if getattr(user, "favorite_chore", None) and getattr(user, "total_chores_completed", 0) > 10:
-            formatted += f" Also, what's with your {user.favorite_chore} obsession?"
+            if getattr(user, "favorite_chore", None) and getattr(user, "total_chores_completed", 0) > 10:
+                formatted += f" Also, what's with your {user.favorite_chore} obsession?"
 
         # Random roast, max once every 12h
         if random.random() < 0.15 and (
@@ -83,25 +123,25 @@ def dusty_response(template_key_or_text, include_seasonal=True, **kwargs) -> str
             if user.last_intent == template_key_or_text and random.random() < 0.5:
                 formatted += " Déjà vu much?"
 
-    # Seasonal greetings
-    if include_seasonal:
-        holiday = seasonal_greeting()
+        # Seasonal greetings
+        if include_seasonal:
+            holiday = seasonal_greeting()
         if holiday and random.random() < 0.5:
             formatted += f" 🎉 {holiday}"
 
-    # Random snark
-    if random.random() < 0.15:
-        formatted += f" 💥{random.choice(DUSTY_SNARK)}"
+        # Random snark
+        if random.random() < 0.15:
+            formatted += f" 💥{random.choice(DUSTY_SNARK)}"
 
 
-    # Fatigue sass (20% chance)
-    if "user" in kwargs and isinstance(kwargs["user"], User):
-        user = kwargs["user"]
+        # Fatigue sass (20% chance)
+        if "user" in kwargs and isinstance(kwargs["user"], User):
+            user = kwargs["user"]
     
-    if user.fatigue_level and user.fatigue_level >= 7 and random.random() < 0.2:
-        formatted += f" (Dusty’s noticing a fatigue level of {user.fatigue_level}/10. Pace yourself, overachiever.)"
+        if user.fatigue_level and user.fatigue_level >= 7 and random.random() < 0.2:
+            formatted += f" (Dusty’s noticing a fatigue level of {user.fatigue_level}/10. Pace yourself, overachiever.)"
 
-    return f"[Dusty 🤖] {formatted}"
+        return f"[Dusty 🤖] {formatted}"
 
 def memory_based_commentary(user, intent):
     if not user:

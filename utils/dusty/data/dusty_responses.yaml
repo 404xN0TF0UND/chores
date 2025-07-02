@@ -213,7 +213,28 @@ DUSTY_RESPONSES:
   no_chores:
   - "You're free. At least for now. I can't find anything assigned to you, {name}."
 
+  help:
+    default:
+      - "Here’s what I can do. Try to keep up."
+    sarcastic:
+      - "Oh NOW you want help? Here’s the menu, boss."
+    gentle:
+      - "Happy to help! Here’s what I can do."
+  unknown:
+    default:
+      - "Sorry, I didn’t quite catch that."
+    sarcastic:
+      - "Cool story. Try using real commands next time."
+    gentle:
+      - "Hmm, not sure I understood. Want to rephrase?"
 
+  set_tone:
+    gentle:
+      - "All set. I’ll keep it sweet and soft from now on."
+    sarcastic:
+      - "Oh, you want sass? Buckle up, buttercup."
+    default:
+      - "Back to default tone. You get what you get.
 
 
 

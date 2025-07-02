@@ -4,6 +4,8 @@ from datetime import datetime
 db = SQLAlchemy()
 
 class User(db.Model):
+    __tablename__ = 'users'
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False)
     phone = db.Column(db.String(20), unique=True, nullable=False)
@@ -12,6 +14,11 @@ class User(db.Model):
     last_roast = db.Column(db.DateTime)
     total_chores_assigned = db.Column(db.Integer, default=0)
     last_unassigned_seen = db.Column(db.Integer, default=0)
+    
+    # Dusty Tone Preference
+    tone_preference = db.Column(db.String(20), default="default") # Can be default, sarcastic, gentle, random
+    last_tone_change = db.Column(db.DateTime)
+    tone_change_count = db.Column(db.Integer, default=0)
     
     # New memory fields
     total_chores_completed = db.Column(db.Integer, default=0)

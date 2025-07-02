@@ -1,11 +1,11 @@
 # routes/main.py
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from models import db, Chore, ChoreHistory, User
-from chores import get_completed_chores, get_unassigned_chores
-from dusty import dusty_response
-from twilio_tools import send_sms
+from utils.chores import get_completed_chores, get_unassigned_chores
+from utils.dusty import dusty_response
+from services.twilio_tools import send_sms
 from datetime import datetime, timedelta
-from users import get_user_by_phone
+from utils.users import get_user_by_phone
 import random
 
 main_bp = Blueprint("main", __name__)
